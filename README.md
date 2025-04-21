@@ -87,7 +87,7 @@ Spectral Web is distributed under the **Spectral Web Open License (SWOL)**.
 You are free to use, modify, distribute, and incorporate this software in any project — commercial or personal — provided that:
 
 - You **acknowledge** this repository as the origin of your derived work:  
-  https://github.com/jaymaj21/spectral_on_browser
+  https://github.com/jaymaj21/spectral_on_browsers
 - You accept that the software is provided **as-is**, with **no warranties** or **indemnities**.
 
 See [`LICENSE.md`](./LICENSE.md) for full details.
