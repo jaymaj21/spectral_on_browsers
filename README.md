@@ -90,7 +90,7 @@ You are free to use, modify, distribute, and incorporate this software in any pr
   https://github.com/jaymaj21/spectral_on_browser
 - You accept that the software is provided **as-is**, with **no warranties** or **indemnities**.
 
-See [`LICENSE.txt`](./LICENSE.txt) for full details.
+See [`LICENSE.md`](./LICENSE.md) for full details.
 
 ## 🙏 Acknowledgments
 
