@@ -3,6 +3,7 @@
 **Spectral Web** is a fully browser-based, richly featured editor for text and code with support for **multi-cursor editing**, **regex-based highlighting**, **inline notes**, **styling**, **custom shortcuts**, and **S3 integration** — all without requiring any installation or backend server.
 
 > 🧠 Originally crafted for advanced editing workflows, educational demos, and deep code/text markup, Spectral Web is now open-source and freely extensible.
+> Here is a (slightly dated) video demo: https://youtu.be/b4CBOInIUts
 
 ## 🚀 Features
 
