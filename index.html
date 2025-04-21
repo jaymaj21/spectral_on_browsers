@@ -1,0 +1,4381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spectral</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .cursor {
+            display: inline-block;
+            width: 1px;
+            background-color: blue;
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+            height: 1em;
+        }
+        
+        .searchResultsListing {
+          max-height: 300px;       /* or any height you prefer */
+           max-width: 500px;       /* or any width you prefer */
+          overflow-y: auto;
+          overflow-x: auto;
+          padding-right: 8px;      /* optional: avoid content hiding behind scrollbar */
+        }
+        
+        @keyframes blink {
+            from, to { opacity: 1 }
+            50% { opacity: 0 }
+        }
+
+        .toolbar {
+            border: 1px solid #ccc;
+            padding: 5px;
+            background: #f3f3f3;
+        }
+        .toolbars {
+            position: sticky;
+            top: 0; z-index: 100; /* Ensures toolbars stay above other content */
+        }
+        
+
+        .editor {
+            font-family: 'Courier New', Courier, monospace;
+            border: 1px solid #ccc;
+            min-height: 600px;
+            padding: 10px;
+            margin-top: 5px;
+            outline: none;
+            width: 100%;
+            height: 100%; /* Fill remaining height */
+              box-sizing: border-box; /* Includes padding/border in total height calculation */
+              overflow: auto;  /*Scrollbar if content exceeds height */
+              white-space: pre-wrap;
+            word-break: break-word;
+             overflow-wrap: break-word;
+        }
+        .toolbar button, select, input[type="text"] {
+            margin-right: 5px;
+        }
+        .highlight1 {
+            background-color: #f0f583;
+        }
+        .highlight2 {
+            background-color: #fd9f9f;
+        }
+        .highlight3 {
+            background-color: #aafba2;
+        }
+        .highlight4 {
+            background-color: #a5f8f8;
+        }
+        .highlight5 {
+            background-color: #f997f9;
+        }
+        .highlight6 {
+            background-color: #ccddf7;
+        }
+        .highlight7 {
+            background-color: #ffffff;
+        }
+
+        #searchBox1 {
+            background-color: #f0f583;
+            width: 150px;
+        }
+        #searchBox2 {
+            background-color: #fd9f9f;
+            width: 150px;
+        }
+        #searchBox3 {
+            background-color: #aafba2;
+            width: 150px;
+        }
+        #searchBox4 {
+            background-color: #a5f8f8;
+            width: 150px;
+        }
+        #searchBox5 {
+            background-color: #f997f9;
+            width: 150px;
+        }
+        #searchBox6 {
+            background-color: #ccddf7;
+            width: 150px;
+        }
+        #searchBox7 {
+            background-color: #ffffff;
+            width: 150px;
+        }
+        .hlButton {
+           width: 20px;
+        }
+
+        
+         #hlButton1 {
+         
+            background-color: #f0f583;
+        }
+        #hlButton2 {
+            background-color: #fd9f9f;
+        }
+        #hlButton3 {
+            background-color: #aafba2;
+        }
+        #hlButton4 {
+            background-color: #a5f8f8;
+        }
+        #hlButton5 {
+            background-color: #f997f9;
+        }
+        #hlButton6 {
+            background-color: #ccddf7;
+        }
+        #hlButton7 {
+            background-color: #ffffff;
+        }
+        #boldButton {
+            font-weight : bold;
+        }
+        #italicsButton {
+           font-style : italic;
+        }
+        #underlineButton {
+           text-decoration : underline;
+        }
+        #statusBar {
+        padding: 0;
+        border: 1px solid #ccc;
+        }
+
+#statusText {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    border: none;
+    padding: 4px;
+    font-family: monospace;
+    background: #f9f9f9;
+    color: #333;
+}
+
+.note-button {
+  width: 24px;
+  height: 24px;
+  background-color: #ffeb3b;
+  border: 1px solid #999;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+  padding: 0;
+}
+
+@media print {
+  body, html {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .toolbars {
+    display: none; /* hide toolbar when printing */
+  }
+
+
+}
+
+    </style>
+</head>
+<body>
+<div class="toolbars" id="top_toolbars">
+    <div class="toolbar">
+        <input type="file" id="fileLoader" title="Open file ...">
+
+        <button onclick="execBold()" id="boldButton" title="Boldface the selection">B</button>
+        <button onclick="execItalic()" id="italicsButton" title="Italicize the selection">I</button>
+        <button onclick="execUnderline()" id="underlineButton" title="Underline the selection">U</button>
+        <button onclick="removeBold()" id="removeBoldButton" title="Remove boldface from selection">¬B</button>
+        <button onclick="removeItalics()" id="removeItalicsButton" title="Remove italics from selection">¬I</button>
+        <button onclick="removeUnderline('editor')" id="removeUnderlineButton" title="Remove underline from selection">¬U</button>
+        
+        <button onclick="firstHalfBoldWords('editor')" title="Make left half of words bold faced"><strong>Bo</strong>ld</button>
+        <button onclick="secondHalfBoldWords('editor')" title="Make right half of words bold faced">Bo<strong>ld</strong></button>
+        <button onclick="target()" title="Set target">🎯</button>
+        <button onclick="link()" title="Create link to target">[🔗]</button>    
+        <button onclick="xlink()" title="Create external link">ext🔗</button> 
+        <button onclick="execCmd('removeFormat')" title="Clear highlighting/formatting from selection">Clear Formatting</button>
+        <input type="color" id="editorBgColor" title="Editor Background Color" value="#ffffff">
+        <button onclick="setDefaultFont()" title="Set default font and size">𝒟ℱ</button>
+        <button onclick="copyEditorToClipboard()" title="Copy editor content to clipboard">📋 Copy</button>
+        
+        <button onclick="showAWSConfigPopup()" title="Configure S3 details">S3 🔧🔑</button>
+        <button onclick="promptAndSaveToS3()" title="Save to S3 storage">💾 Save to S3</button>
+        <button onclick="promptAndLoadFromS3()" title="Load from S3 storage">📂 Load from S3</button>
+        <button title="Clean up MathML" onclick="tidyUp()">🧹 MathML</button> 
+
+        
+    </div>
+    <div class="toolbar">
+
+        <select id="fontChooser" title="Font for highlighters">
+            <option value="No Selection">No Font Selection</option>
+            <option value="Arial">Arial</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Courier New">Courier New</option>
+            <option value="OpenDyslexic">OpenDyslexic</option>
+            <option value="OpenDyslexicMono">OpenDyslexicMono</option>
+        </select>
+
+        <select id="sizeChooser" title="Font size for highlighters">
+            <option value="0" selected>No Size Selection</option>
+            <option value="1">Small</option>
+            <option value="3">Normal</option>
+            <option value="5">Large</option>
+            <option value="7">Huge</option>
+        </select>
+
+        <input type="color" id="colorChooser" title="Forground color for highlighters" value="#000000">
+        
+       <label>
+          <input type="checkbox" id="editableToggle" checked onchange="toggleEditable(this.checked)">
+          Editable
+        </label>
+        
+        <label>
+          <input type="checkbox" id="wrapToggle" checked onchange="toggleLineWrap(this.checked)">
+          Wrap lines
+        </label>
+        <label>
+          <input type="checkbox" id="caseInsensitive" checked>
+          Case-insensitive
+        </label>
+    <button onclick="showFindReplaceDialog()" title="Find and replace">🔍 Find & Replace</button>
+    <button onclick="speakSelection()" title="Read aloud the selected text">🗣 Speak Selection</button>
+    <button id="toggleCursorModeBtn" onclick="toggleCursorInsertMode()" title="Add cursors to selection or interactively add cursors">🖱 Add n-Cursors</button>
+    <button onclick="clearAllCursors()" title="Clear all cursors">❌ Clear n-Cursors</button>
+    <button onclick="alignWithCursors()" id="alignWithCursorsBtn" style="font-size: 0.8em; padding: 2px 6px;">Align /w Cursors ⬅️</button>
+   
+        <button onclick="help()" title="Help screen">❓ Help</button>
+        
+    </div>
+
+    <div class="toolbar">
+        <input type="text" id="searchBox1" placeholder="Enter regex, press enter">
+        <button id="hlButton1" class="hlButton"> 🖍️</button>
+        <input type="text" id="searchBox2" placeholder="Enter regex, press enter">
+        <button id="hlButton2" class="hlButton"> 🖍️</button>
+        <input type="text" id="searchBox3" placeholder="Enter regex, press enter">
+        <button id="hlButton3" class="hlButton"> 🖍️</button>
+        <input type="text" id="searchBox4" placeholder="Enter regex, press enter">
+        <button id="hlButton4" class="hlButton"> 🖍️</button>
+        <input type="text" id="searchBox5" placeholder="Enter regex, press enter">
+        <button id="hlButton5" class="hlButton"> 🖍️</button>
+        <input type="text" id="searchBox6" placeholder="Enter regex, press enter">
+        <button id="hlButton6" class="hlButton"> 🖍️</button>
+        <input type="text" id="searchBox7" placeholder="Enter regex, press enter">
+        <button id="hlButton7" class="hlButton"> 🖍️</button>
+        
+        <label> <input type="checkbox" id="showSearchResults">Results</label>
+    </div>
+    <div class="toolbar" id="statusBar">
+      <textarea id="statusText" rows="2" readonly></textarea>
+    </div>
+</div>
+<br/>
+<div id="editor" class="editor" contenteditable="true"></div>
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.1485.0.min.js"></script>
+<script>
+        var currentFixedHighlighter = null;
+        function setHighlighterCursor(highlighterColor)
+        {
+            
+            if(highlighterColor == null) {
+                document.body.style.cursor = 'auto';
+            } else {
+      
+                const svgCursor = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">' +
+                    '<path d="M2,22 L4,14 L18,2 L22,6 L10,20 Z" fill="' + highlighterColor +'" stroke="#444" stroke-width="1"/>' +
+                    '<path d="M2,22 L6,18" stroke="#444" stroke-width="2"/></svg>';
+                const encodedSvg = encodeURIComponent(svgCursor).replace(/'/g, "%27").replace(/"/g, "%22");
+                document.body.style.cursor = 'url("data:image/svg+xml,' + encodedSvg +'") 2 22, auto';
+            }
+
+        }
+        
+        function sethl(color) {
+            if (color != null)
+           { 
+            currentFixedHighlighter = color;
+           } else {
+            currentFixedHighlighter = null;
+           }
+           setHighlighterCursor(color);
+        }
+        function sethlwhite() {
+            sethl('#ffffff');
+        }
+        function execCmd(command, value = null) {
+            document.execCommand(command, false, value);
+        }
+        
+        function execItalic() {
+            if (savedEditorRange == null || savedEditorRange.collapsed) {
+               italicsMode=!italicsMode;
+               if(italicsMode) {
+                     document.getElementById("italicsButton").style.borderColor = '#ff0000';
+               } else {
+                     document.getElementById("italicsButton").style.borderColor = '';                    
+               }
+            }
+            applyInlineStyle({'fontStyle' : 'italic'}, 'editor');
+        }
+    
+        let boldMode = false;
+        let italicsMode = false;
+        let underlineMode = false;
+        let removeBoldMode = false;
+        let removeItalicsMode = false;
+        let removeUnderlineMode = false;
+        function execBold() {
+            if (savedEditorRange == null || savedEditorRange.collapsed) {
+               boldMode=!boldMode;
+               if(boldMode) {
+                     document.getElementById("boldButton").style.borderColor = '#ff0000';
+               } else {
+                     document.getElementById("boldButton").style.borderColor = '';                    
+               }
+            }    
+            applyInlineStyle({'fontWeight' : 'bold' }, 'editor');
+        }
+
+        function execUnderline() 
+        {
+            if (savedEditorRange == null || savedEditorRange.collapsed) {
+                underlineMode=!underlineMode;
+                if(underlineMode) {
+                      document.getElementById("underlineButton").style.borderColor = '#ff0000';
+                } else {
+                      document.getElementById("underlineButton").style.borderColor = '';                    
+                }
+            }
+            applyInlineStyle({'textDecoration': 'underline solid'}, 'editor');
+        }
+        function execHilite(color) {
+            styles = {'backgroundColor' :  color};
+            augmentFontWeightStyleAndDecoration(styles);
+            applyInlineStyle(styles , 'editor');
+        }
+
+        function toggleFixedHighlighterWhenEmptySelection(bgColor, btn) {
+                 if(bgColor != null) {
+                    for(var i = 1; i <= 7; ++i) {
+                        var abutton = document.getElementById("hlButton"+i).style.borderColor='';
+                    } 
+                    if(currentFixedHighlighter == null) {
+                        btn.style.borderColor= '#ff0000';
+                        currentFixedHighlighter = bgColor;
+                    } else {
+                        currentFixedHighlighter = null;
+                    }
+                    setHighlighterCursor(currentFixedHighlighter);
+                 }
+        }
+
+        function applyInlineStyle(stylesObj, editableId) {
+            const editor = document.getElementById(editableId);
+           
+            const range = savedEditorRange;
+
+            // Ensure selection is within the editor
+            if (range == null || !editor.contains(range.commonAncestorContainer)) {
+                return;
+            }
+
+            const walker = document.createTreeWalker(
+                editor,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: (node) => {
+                        const nodeRange = document.createRange();
+                        nodeRange.selectNodeContents(node);
+                        return range.compareBoundaryPoints(Range.END_TO_START, nodeRange) < 0 &&
+                               range.compareBoundaryPoints(Range.START_TO_END, nodeRange) > 0
+                               ? NodeFilter.FILTER_ACCEPT
+                               : NodeFilter.FILTER_REJECT;
+                    }
+                },
+                false
+            );
+
+            let node;
+            const nodes = [];
+
+            while (node = walker.nextNode()) {
+                nodes.push(node);
+            }
+
+            const highlights = [];
+
+            nodes.forEach((textNode) => {
+                const nodeRange = document.createRange();
+                nodeRange.selectNodeContents(textNode);
+
+                const intersectionRange = nodeRange.cloneRange();
+                intersectionRange.setStart(
+                    textNode,
+                    textNode === range.startContainer ? range.startOffset : 0
+                );
+                intersectionRange.setEnd(
+                    textNode,
+                    textNode === range.endContainer ? range.endOffset : textNode.length
+                );
+
+                highlights.push({
+                    node: textNode,
+                    spanStart: intersectionRange.startOffset,
+                    spanEnd: intersectionRange.endOffset
+                });
+            });
+
+            // Sort highlights in reverse document order (right-to-left) to preserve offsets
+            highlights.sort((a, b) => {
+                if (a.node === b.node) return b.spanStart - a.spanStart;
+                const pos = a.node.compareDocumentPosition(b.node);
+                return (pos & Node.DOCUMENT_POSITION_PRECEDING) ? 1 : -1;
+            });
+
+            // Apply styling safely in reverse order
+            highlights.forEach(({ node, spanStart, spanEnd }) => {
+                if (spanStart === spanEnd) return;  // Skip empty ranges
+
+                const styledSpan = document.createElement('span');
+                 Object.keys(stylesObj).forEach(prop => {
+                    styledSpan.style[prop] = stylesObj[prop];
+                });
+
+                const range = document.createRange();
+                range.setStart(node, spanStart);
+                range.setEnd(node, spanEnd);
+                if ('textDecoration' in stylesObj && stylesObj['textDecoration'] == '') {
+                    removeUnderlineHelper('editor', range);
+                }
+                range.surroundContents(styledSpan);
+            });
+            window.getSelection().removeAllRanges();
+
+            
+        }
+        var dark = false;
+
+        function getEditorHTML() {
+            const htmlContent = document.getElementById('editor').innerHTML;
+            //console.log(htmlContent);
+            alert("Editor HTML:\n" + htmlContent);
+            return htmlContent;
+        }
+
+        function setEditorHTML() {
+            const htmlContent = prompt("Paste HTML content here:");
+            if (htmlContent !== null) {
+                document.getElementById('editor').innerHTML = htmlContent;
+            }
+        }
+        function applyHighlightAndFont(color, whiteIsTransparent=true)
+        {
+            const colorSel = document.getElementById("colorChooser").value;
+            const fontSel = document.getElementById("fontChooser").value;
+            const sizeSel = document.getElementById("sizeChooser").value;
+                
+            styles = {};
+                
+            if(!whiteIsTransparent ||  (color.toLowerCase() !== "rgb(255, 255, 255)" && color.toLowerCase() !== "rgb(0, 0, 0)" ))
+            {
+                styles['backgroundColor']=color;
+            }
+
+            styles['color'] = colorSel;
+                
+            if(fontSel !== "No Selection") {
+               styles['fontFamily'] = fontSel;
+            }
+
+            if(sizeSel !== "No Selection") {
+               switch(sizeSel) {
+                   case "1": styles['fontSize'] = 'x-small'; break;   // or '10px'
+                   case "3": styles['fontSize'] = 'medium'; break;    // or '16px'
+                   case "5": styles['fontSize'] = 'x-large'; break;   // or '24px'
+                   case "7": styles['fontSize'] = 'xx-large'; break;  // or '32px'
+                   default: styles['fontSize'] = 'medium';
+               }
+            }
+            augmentFontWeightStyleAndDecoration(styles);
+            applyInlineStyle(styles, 'editor');
+
+        }
+      
+        function augmentFontWeightStyleAndDecoration(styles) {
+            if(boldMode){
+              styles['fontWeight'] = 'bold';
+            }  
+            if(italicsMode){
+               styles['fontStyle'] = 'italic';
+            }
+            if(underlineMode) {
+               styles['textDecoration'] = 'underline solid';
+            }
+            if(removeBoldMode){
+              styles['fontWeight'] = 'normal';
+            }  
+            if(removeItalicsMode){
+               styles['fontStyle'] = 'normal';
+            }
+            //TODO : this needs special handling
+            if(removeUnderlineMode) {
+               styles['textDecoration'] = '';
+            }  
+        }
+
+        function registerEventHandlers(id)
+        {
+            
+           if(id == 0) return;
+           document.getElementById('searchBox' + id).addEventListener('keypress', function(event) {
+               var showingSearchResults = document.getElementById("showSearchResults").checked;
+               
+            if (event.key === 'Enter') {
+                highlightRegexRobust( event.target.value ,id, showingSearchResults);
+            }});
+            
+            
+                
+            document.getElementById('hlButton' + id).addEventListener('click', function(event) {
+
+                var bgColorFromButtonStyle = window.getComputedStyle(event.target).backgroundColor;
+                const selection = window.getSelection();
+                if (selection.rangeCount === 0 || selection.isCollapsed) {
+                     toggleFixedHighlighterWhenEmptySelection(bgColorFromButtonStyle, event.target);
+                     return;
+                }
+                
+                applyHighlightAndFont(bgColorFromButtonStyle, true);
+              });
+             
+            registerEventHandlers(id-1); 
+        }
+        registerEventHandlers(7);
+
+        
+
+        document.getElementById('editor').addEventListener('dblclick', function(event) {
+            const selection = window.getSelection();
+            const word = selection.toString().trim();
+            if (word.length > 0) {
+                highlightRegexRobust( word ,0, false);
+                
+            }
+        });
+        
+         
+        function randomHilightColor() {
+            
+            var letters = dark ? '23456' : 'BCDEF'; 
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * letters.length)];
+            }
+            return color;
+        }
+ 
+    
+  function highlightRegexRobust(pattern, colid , showResultsListing=false) {
+    const editor = document.getElementById('editor');
+    const isCaseInsensitive = document.getElementById('caseInsensitive')?.checked;
+    const regexFlags = isCaseInsensitive ? 'gim' : 'gm';
+    const regex = new RegExp(pattern.length <= 3 ? '\\b' + pattern + '\\b' : pattern, regexFlags);
+
+    const hlColor = randomHilightColor();
+
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+    const textNodes = [];
+    let textWithNewlines = '';
+    let offset = 0;
+    
+    var resultListing = null;
+    var resultDiv = null;
+    var resultCount = 0;
+    if(showResultsListing && colid >= 1 && colid <= 7){
+        resultListing = document.getElementById("searchResults"+colid + "listing");
+        resultDiv = document.getElementById("searchResults"+colid );
+        resultListing.innerHTML="";
+        resultDiv.style.display="block";
+        makeDraggable("searchResults" + colid, "searchResults"+colid+"Header");
+        resultListing.addEventListener('copy', copyHandler);
+        hideTools();
+    }
+
+    function addNewlineMarkers(node) {
+        const tag = node.tagName?.toLowerCase();
+        if (['div', 'p', 'li', 'tr'].includes(tag)) {
+            textWithNewlines += '\n';
+            offset++;
+        }
+    }
+
+    let node = editor;
+    const highlights = [];
+
+    // Traverse and build newline-aware text + offset map
+    function traverse(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            if (text.trim().length > 0) {
+                textNodes.push({ node, start: offset, end: offset + text.length });
+            }
+            textWithNewlines += text;
+            offset += text.length;
+        } else if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+            const tag = node.tagName?.toLowerCase();
+
+            if (['div', 'p', 'li', 'tr', 'br'].includes(tag)) {
+                textWithNewlines += '\n';
+                offset++;
+            }
+
+            for (const child of node.childNodes) {
+                traverse(child);
+            }
+
+            if (['div', 'p', 'li', 'tr'].includes(tag)) {
+                textWithNewlines += '\n';
+                offset++;
+            }
+        }
+    }
+
+    traverse(editor);
+
+    // Run regex match over text with virtual newlines
+    let match;
+    while ((match = regex.exec(textWithNewlines)) !== null) {
+        const matchStart = match.index;
+        const matchEnd = match.index + match[0].length;
+
+        // Map to text nodes
+        textNodes.forEach(({ node, start, end }) => {
+            if (end <= matchStart || start >= matchEnd) return;
+
+            const spanStart = Math.max(start, matchStart) - start;
+            const spanEnd = Math.min(end, matchEnd) - start;
+
+            highlights.push({ node, spanStart, spanEnd });
+        });
+    }
+
+    // Sort and apply highlights in reverse DOM order
+    highlights.sort((a, b) => {
+        if (a.node === b.node) return b.spanStart - a.spanStart;
+        return textNodes.indexOf(b.node) - textNodes.indexOf(a.node);
+    });
+    
+
+    highlights.forEach(({ node, spanStart, spanEnd }) => {
+        const range = document.createRange();
+        
+        const span = document.createElement('span');
+
+        span.className = colid === 0 ? 'highlight' : 'highlight' + colid;
+        range.setStart(node, spanStart);
+        range.setEnd(node, spanEnd);
+        
+        if(showResultsListing && colid >= 1 && colid <= 7){
+            const anchorId = `srch_${generateGUID()}`;
+            span.id = anchorId;
+            
+            var afterText = getTextFromRangeEndToNextNewline(range);
+            var beforeText = getTextFromLastNewlineToRangeStart(range);
+            
+            ++ resultCount; 
+            resultListing.appendChild(document.createTextNode("#"+resultCount+"\t"+ escapeTextWithLineBreaks(beforeText.substr(-40))));
+
+           
+            
+            const resultAnchor = document.createElement('a');
+            resultAnchor.href = `#${anchorId}`;
+            resultAnchor.innerText = range.toString();
+            resultAnchor.style.display = 'inline';
+            resultAnchor.setAttribute("onclick","selectText('"+anchorId + "')");
+            
+            resultListing.appendChild(resultAnchor);
+            
+            resultListing.appendChild(document.createTextNode(   escapeTextWithLineBreaks(afterText.substr(0,40))) );
+
+            
+            resultListing.appendChild(document.createElement('br'));
+        }
+        
+        
+        if (colid === 0) {
+            span.style.backgroundColor = hlColor;
+        }
+        else {
+            if(boldMode) span.style.fontWeight = 'bold';
+            if(italicsMode) span.style.fontStyle = 'italic';
+            if(underlineMode) span.style.textDecoration = 'underline solid';
+            if(removeBoldMode) span.style.fontWeight = 'normal';
+            if(removeItalicsMode) span.style.fontStyle = 'normal';
+            
+            
+            
+            
+            const colorSel = document.getElementById("colorChooser").value;
+            const fontSel = document.getElementById("fontChooser").value;
+            const sizeSel = document.getElementById("sizeChooser").value;
+
+            span.style.color = colorSel;
+                    
+          if(fontSel !== "No Selection") {
+             span.style.fontFamily = fontSel;
+          }
+    
+          if(sizeSel !== "No Selection") {
+             switch(sizeSel) {
+                 case "1": span.style.fontSize = 'x-small'; break;   // or '10px'
+                 case "3":  span.style.fontSize = 'medium'; break;    // or '16px'
+                 case "5":  span.style.fontSize = 'x-large'; break;   // or '24px'
+                 case "7":  span.style.fontSize = 'xx-large'; break;  // or '32px'
+                 default:   span.style.fontSize = 'medium';
+             }
+          }
+          // Special handling of underline removal
+          if(removeUnderlineMode) removeUnderlineHelper('editor', range);
+       }
+       
+       range.surroundContents(span);
+    });
+
+    setStatus(`${highlights.length} match(es) for pattern: ${pattern}`);
+}
+
+
+
+ function escapeTextWithLineBreaks(text) {
+    return text
+        .replace(/&/g, '&amp;')   // must come first
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/\r\n/g, '<br/>')
+        .replace(/\n/g, '<br/>')
+        ;
+}
+
+ document.getElementById('fileLoader').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+
+    if (!file) {
+        alert("No file selected.");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const contents = e.target.result;
+
+        // Create a new <div> element
+        
+        const loadingElement = document.createElement('div');
+
+        //loadingElement.innerText = contents;
+
+        loadingElement.innerHTML = escapeTextWithLineBreaks(contents);
+
+        // Append to the editor element
+        document.getElementById('editor').innerHTML = "";
+        document.getElementById('editor').appendChild(loadingElement);
+    };
+
+    reader.onerror = function(e) {
+        alert("Error reading file!");
+    };
+
+    reader.readAsText(file); // Read as plain text
+});
+
+
+    function secondHalfBoldWords(editableId) {
+        const editor = document.getElementById(editableId);
+
+        function processNode(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const words = node.textContent.split(/(\s+)/); // preserve whitespace
+                const fragment = document.createDocumentFragment();
+
+                words.forEach(word => {
+                    if (word.trim().length > 3) {
+                        const halfIndex = Math.floor(word.length / 2);
+                        const firstHalf = word.slice(0, halfIndex);
+                        const secondHalf = word.slice(halfIndex);
+
+                        fragment.appendChild(document.createTextNode(firstHalf));
+
+                        const boldPart = document.createElement('strong');
+                        boldPart.textContent = secondHalf;
+                        fragment.appendChild(boldPart);
+                    } else {
+                        fragment.appendChild(document.createTextNode(word));
+                    }
+                });
+
+                node.replaceWith(fragment);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                Array.from(node.childNodes).forEach(processNode);
+            }
+        }
+
+        processNode(editor);
+  }
+
+  // Bold-face the first half of each word
+function firstHalfBoldWords(editableId) {
+    const editor = document.getElementById(editableId);
+
+    function processNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const words = node.textContent.split(/(\s+)/); // preserve whitespace
+            const fragment = document.createDocumentFragment();
+
+            words.forEach(word => {
+                if (word.trim().length > 3) {
+                    const halfIndex = Math.ceil(word.length / 2);
+                    const firstHalf = word.slice(0, halfIndex);
+                    const secondHalf = word.slice(halfIndex);
+
+                    const boldPart = document.createElement('strong');
+                    boldPart.textContent = firstHalf;
+                    fragment.appendChild(boldPart);
+
+                    fragment.appendChild(document.createTextNode(secondHalf));
+                } else {
+                    fragment.appendChild(document.createTextNode(word));
+                }
+            });
+
+            node.replaceWith(fragment);
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            Array.from(node.childNodes).forEach(processNode);
+        }
+    }
+
+    processNode(editor);
+}
+
+
+function toggleEditable(isEditable) {
+    const editor = document.getElementById('editor');
+    editor.contentEditable = isEditable ? 'true' : 'false';
+    editor.style.backgroundColor = isEditable ? '#ffffff' : '#fafafa';
+    
+}
+function removeBold() {
+    if (savedEditorRange == null || savedEditorRange.collapsed) {
+                removeBoldMode=!removeBoldMode;
+                if(removeBoldMode) {
+                      document.getElementById("removeBoldButton").style.borderColor = '#ff0000';
+                } else {
+                      document.getElementById("removeBoldButton").style.borderColor = '';                    
+                }
+         }
+             
+                  
+             applyInlineStyle({'fontWeight' : 'normal' }, 'editor');
+}
+function removeItalics() {
+           if (savedEditorRange == null || savedEditorRange.collapsed) {
+                removeItalicsMode=!removeItalicsMode;
+                if(removeItalicsMode) {
+                      document.getElementById("removeItalicsButton").style.borderColor = '#ff0000';
+                } else {
+                      document.getElementById("removeItalicsButton").style.borderColor = '';                    
+                }
+         }
+             
+                  
+             applyInlineStyle({'fontStyle' : 'normal' }, 'editor');
+}
+
+function removeUnderline(editableId) {
+    removeUnderlineHelper(editableId, savedEditorRange);
+}
+
+function removeUnderlineHelper(editableId, editorRange) {
+    if (editorRange == null || editorRange.collapsed) {
+     removeUnderlineMode=!removeUnderlineMode;
+     if(removeUnderlineMode) {
+       document.getElementById("removeUnderlineButton").style.borderColor = '#ff0000';
+     } else {
+       document.getElementById("removeUnderlineButton").style.borderColor = '';                    
+     }
+     return;     
+    } 
+    const editor = document.getElementById(editableId);
+    
+    const range = editorRange;
+    if (!editor.contains(range.commonAncestorContainer)) return;
+
+    const walker = document.createTreeWalker(
+        editor,
+        NodeFilter.SHOW_ELEMENT,
+        {
+            acceptNode: (node) => {
+                if (!range.intersectsNode(node)) return NodeFilter.FILTER_REJECT;
+                const deco = window.getComputedStyle(node).textDecorationLine;
+                return deco.includes('underline') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+            }
+        }
+    );
+
+    const nodesToClean = [];
+    let node;
+
+    while (node = walker.nextNode()) {
+        nodesToClean.push(node);
+    }
+
+    nodesToClean.forEach(span => {
+        span.style.textDecoration = 'none';
+        // If no other inline styles remain, unwrap the span
+        if (!span.getAttribute('style') || span.getAttribute('style').trim() === '') {
+            const parent = span.parentNode;
+            while (span.firstChild) {
+                parent.insertBefore(span.firstChild, span);
+            }
+            parent.removeChild(span);
+        }
+    });
+
+    window.getSelection().removeAllRanges();
+}
+
+function toggleLineWrap(isWrapped) {
+    const editor = document.getElementById('editor');
+    if (!editor) return;
+
+    if (isWrapped) {
+        editor.style.whiteSpace = 'pre-wrap'; // allow wrapping
+        editor.style.overflowX = 'hidden';
+    } else {
+        editor.style.whiteSpace = 'pre';      // no wrapping
+        editor.style.overflowX = 'auto';      // horizontal scroll
+    }
+}
+window.addEventListener('DOMContentLoaded', () => {
+    toggleLineWrap(true); // enable wrap on load
+});
+
+function getTextWithNewlinesFromRange(range) {
+    const fragment = range.cloneContents();
+    let result = '';
+
+    function traverse(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            result += node.textContent;
+        } else if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+            const tag = node.tagName?.toLowerCase();
+
+            if (['div', 'p', 'li', 'tr', 'br'].includes(tag)) {
+                result += '\n';
+            }
+
+            for (const child of node.childNodes) {
+                traverse(child);
+            }
+
+            if (['div', 'p', 'li', 'tr'].includes(tag)) {
+                result += '\n';
+            }
+        }
+    }
+
+    traverse(fragment);
+
+    // Normalize multiple newlines, trim excess
+    return result.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+
+function reflow(maxColumn) {
+    if (!savedEditorRange) {
+        setStatus("No selection saved.");
+        return;
+    }
+
+    const range = savedEditorRange.cloneRange();
+    let text = getTextWithNewlinesFromRange(range);
+
+    if (!text.trim()) {
+        setStatus("Selection is empty.");
+        return;
+    }
+     
+    text = text.replaceAll(/\s*\r?\n\s*/g, ' ');
+    
+
+    let output = '';
+    let col = 0;
+
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+
+        if (ch === ' ' || ch === '\t') {
+            if (col > maxColumn) {
+                output += '\n';
+                col = 0;
+            } else {
+                output += ch;
+                col++;
+            }
+        } else {
+            
+            output += ch;
+            col++;
+        }
+    }
+
+    // Replace selection
+    range.deleteContents();
+    range.insertNode(document.createTextNode(output));
+}
+ 
+// ... (rest of your script remains unchanged)
+
+function smartReturnPress() {
+  const editor = document.getElementById('editor');
+  const selection = window.getSelection();
+  
+  const range = savedEditorRange;
+  if (!range || !editor.contains(range.commonAncestorContainer)) return;
+
+
+  // Clone range and get line content up to cursor
+  const fullRange = range.cloneRange();
+  fullRange.setStart(editor, 0);
+  const beforeCursor =  getTextWithNewlinesFromRange(fullRange);
+  
+
+  // Get current line content (before and after)
+  const lastLineBreak = beforeCursor.lastIndexOf('\n');
+  const inputToLeft = beforeCursor.slice(lastLineBreak + 1);
+  const trimmed = inputToLeft.trim();
+  const lastChar = trimmed.charAt(trimmed.length - 1);
+
+  // Decide indentation
+  let indent = "";
+  const numLParen = (trimmed.match(/\(/g) || []).length;
+  const numRParen = (trimmed.match(/\)/g) || []).length;
+  if (lastChar === '{' || lastChar === ':' || numLParen > numRParen) {
+    indent = '    ';
+  }
+
+  // Get indent of current line
+  const lineIndentMatch = inputToLeft.match(/^\s*/);
+  const lineIndent = lineIndentMatch ? lineIndentMatch[0] : '';
+
+  // Insert new line + indentation
+  const newLine = `\n${indent}${lineIndent}`;
+
+  const inputToRightRange = range.cloneRange();
+  inputToRightRange.setEndAfter(editor.lastChild);
+  const inputToRight = inputToRightRange.toString().trimStart();
+
+  // Check if the next non-whitespace character is a closing brace
+  if (inputToRight.startsWith('}')) {
+    const extraLine = `\n${lineIndent}`;
+    range.deleteContents();
+    const temp = document.createTextNode(newLine + extraLine);
+    range.insertNode(temp);
+
+    // Move cursor to the middle line
+    const pos = indent.length + lineIndent.length + 1; // 1 = \n
+    const newRange = document.createRange();
+    newRange.setStart(temp, pos);
+    newRange.setEnd(temp, pos);
+
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  } else {
+    // Just insert one line
+    range.deleteContents();
+    const temp = document.createTextNode(newLine);
+    range.insertNode(temp);
+
+    // Move cursor to end of inserted line
+    const pos = newLine.length;
+    const newRange = document.createRange();
+    newRange.setStart(temp, pos);
+    newRange.setEnd(temp, pos);
+
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
+
+  // Ensure editor scrolls with cursor
+  editor.scrollTop = editor.scrollHeight;
+}
+
+
+
+
+function uc() {
+    transformSelectedText(text => text.toUpperCase());
+}
+
+function lc() {
+    transformSelectedText(text => text.toLowerCase());
+}
+
+function tc() {
+    transformSelectedText(text => {
+        return text.replace(/\w\S*/g, word =>
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        );
+    });
+}
+
+
+// Case conversion helpers
+function splitWords(text) {
+    return text
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')  // camelCase to space
+        .replace(/[_\-]+/g, ' ')                 // snake_case or kebab-case to space
+        .toLowerCase()
+        .trim()
+        .split(/\s+/);
+}
+
+function toCamelCase(text) {
+    const words = splitWords(text);
+    return words[0] + words.slice(1).map(capitalize).join('');
+}
+
+function toSnakeCase(text) {
+    return splitWords(text).join('_');
+}
+
+function toKebabCase(text) {
+    return splitWords(text).join('-');
+}
+
+function capitalize(word) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+}
+function camel() {
+    transformSelectedText(text => toCamelCase(text));
+}
+
+function snake() {
+    transformSelectedText(text => toSnakeCase(text));
+}
+
+function kebab() {
+    transformSelectedText(text => toKebabCase(text));
+}
+
+function transformSelectedText(transformFn) {
+
+    if (!savedEditorRange) {
+        setStatus("No selection saved.");
+        return;
+    }
+
+    const range = savedEditorRange.cloneRange();
+    const selectedText = getTextWithNewlinesFromRange(range);
+
+    if (!selectedText) {
+        setStatus("Selection is empty.");
+        return;
+    }
+
+    const transformed = transformFn(selectedText);
+
+    // Replace selected content with transformed version
+    range.deleteContents();
+    const textNode = document.createTextNode(transformed);
+    range.insertNode(textNode);
+
+}
+
+function wc() {
+    if (!savedEditorRange) {
+        setStatus("No selection saved.");
+        return 0;
+    }
+
+    const selectedText = savedEditorRange.toString().trim();
+    if (!selectedText) {
+        setStatus("No text selected.");
+        return 0;
+    }
+
+    const words = selectedText.split(/\s+/);
+    const count = words.length;
+    setStatus('Word count: ' + count);
+    return count;
+}
+
+function setStatus(text) {
+    const statusBox = document.getElementById('statusText');
+    if (statusBox) {
+        statusBox.value = text + "\n" + statusBox.value ;
+    }
+}
+function showText(str, popupid)
+{
+  dec = Base64.decode(str);
+  popup(dec, popupid);
+} 
+function popup(txt, popupid)
+{
+  var generator=window.open('',popupid,',resizable=false,height=800,width=1000,titlebar=0,toolbar=0');
+  var doc = generator.document;
+  doc.write("<html><head>");
+  doc.write("<style type=\"text/css\">");
+  doc.write("body { background-color: white ;  color: black; }"); 
+  doc.write("\ntextarea {width: 100%;  height: 100%; }"); 
+  doc.write("</style></head>");
+
+  doc.write("<body><textarea id=myarea>");
+  doc.write("</textarea></body></html>");
+  generator.focus();
+  doc.getElementById('myarea').value = txt;
+  doc.close();
+}
+
+///// Text input popup
+let textPopupCallback = null;
+let savedEditorRange = null;
+
+function showTextPopup(callback, heading, initialText = '') {
+    
+
+    textPopupCallback = callback;
+    const popup = document.getElementById('textPopup');
+    const textarea = document.getElementById('popupTextarea');
+    const textAreaHeading = document.getElementById('popupTextAreaHeading');
+    textAreaHeading.innerText = heading;
+    textarea.value = initialText;
+    popup.style.display = 'block';
+    textarea.focus();
+}
+
+
+function submitTextPopup() {
+    const text = document.getElementById('popupTextarea').value;
+    closeTextPopup();
+    if (textPopupCallback) {
+        textPopupCallback(text);
+    }
+}
+
+function closeTextPopup() {
+    document.getElementById('textPopup').style.display = 'none';
+}
+var Base64 = {
+
+    // private property
+    _keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+
+    // public method for encoding
+    encode : function (input) {
+        var output = "";
+        var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+        var i = 0;
+
+        input = Base64._utf8_encode(input);
+
+        while (i < input.length) {
+
+            chr1 = input.charCodeAt(i++);
+            chr2 = input.charCodeAt(i++);
+            chr3 = input.charCodeAt(i++);
+
+            enc1 = chr1 >> 2;
+            enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+            enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+            enc4 = chr3 & 63;
+
+            if (isNaN(chr2)) {
+                enc3 = enc4 = 64;
+            } else if (isNaN(chr3)) {
+                enc4 = 64;
+            }
+
+            output = output +
+            this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) +
+            this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
+
+        }
+
+        return output;
+    },
+
+    // public method for decoding
+    decode : function (input) {
+        var output = "";
+        var chr1, chr2, chr3;
+        var enc1, enc2, enc3, enc4;
+        var i = 0;
+
+        input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+
+        while (i < input.length) {
+
+            enc1 = this._keyStr.indexOf(input.charAt(i++));
+            enc2 = this._keyStr.indexOf(input.charAt(i++));
+            enc3 = this._keyStr.indexOf(input.charAt(i++));
+            enc4 = this._keyStr.indexOf(input.charAt(i++));
+
+            chr1 = (enc1 << 2) | (enc2 >> 4);
+            chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+            chr3 = ((enc3 & 3) << 6) | enc4;
+
+            output = output + String.fromCharCode(chr1);
+
+            if (enc3 != 64) {
+                output = output + String.fromCharCode(chr2);
+            }
+            if (enc4 != 64) {
+                output = output + String.fromCharCode(chr3);
+            }
+
+        }
+
+        output = Base64._utf8_decode(output);
+
+        return output;
+
+    },
+
+    // private method for UTF-8 encoding
+    _utf8_encode : function (string) {
+        string = string.replace(/\r\n/g,"\n");
+        var utftext = "";
+
+        for (var n = 0; n < string.length; n++) {
+
+            var c = string.charCodeAt(n);
+
+            if (c < 128) {
+                utftext += String.fromCharCode(c);
+            }
+            else if((c > 127) && (c < 2048)) {
+                utftext += String.fromCharCode((c >> 6) | 192);
+                utftext += String.fromCharCode((c & 63) | 128);
+            }
+            else {
+                utftext += String.fromCharCode((c >> 12) | 224);
+                utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+                utftext += String.fromCharCode((c & 63) | 128);
+            }
+
+        }
+
+        return utftext;
+    },
+
+    // private method for UTF-8 decoding
+    _utf8_decode : function (utftext) {
+        var string = "";
+        var i = 0;
+        var c = c1 = c2 = 0;
+
+        while ( i < utftext.length ) {
+
+            c = utftext.charCodeAt(i);
+
+            if (c < 128) {
+                string += String.fromCharCode(c);
+                i++;
+            }
+            else if((c > 191) && (c < 224)) {
+                c2 = utftext.charCodeAt(i+1);
+                string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+                i += 2;
+            }
+            else {
+                c2 = utftext.charCodeAt(i+1);
+                c3 = utftext.charCodeAt(i+2);
+                string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+                i += 3;
+            }
+
+        }
+
+        return string;
+    }
+
+}
+
+function noteButtonClickHandler(event) {
+        event.preventDefault(); // Prevent focus stealing
+        showNoteEditPopup(event);
+    };
+
+function createMessageButton(label, base64Message) {
+    
+    const editor = document.getElementById('editor');
+    const range = savedEditorRange;
+
+    if (!range || !editor.contains(range.commonAncestorContainer)) {
+        alert("No valid insertion point found. Please place the cursor inside the editor before opening the popup.");
+        return;
+    }
+
+    // Create the button with embedded message
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.setAttribute('data-message', base64Message);
+    btn.setAttribute("onclick", 'noteButtonClickHandler(event)');
+    btn.setAttribute("class", "note-button");
+    
+
+    btn.onclick = noteButtonClickHandler;
+
+    range.insertNode(btn);
+
+
+    // Clear saved range
+    savedEditorRange = null;
+}
+
+function showNoteInputPopup() {
+    showTextPopup(function(text) {
+        var encodedMessage = Base64.encode(text);
+        createMessageButton("",encodedMessage);
+    }, 'Create Note:');
+}
+
+function showNoteEditPopup(event) {
+    const initialMsg = Base64.decode(event.target.getAttribute('data-message'));
+    showTextPopup(function(text) {
+        var encodedMessage = Base64.encode(text);
+        event.target.setAttribute('data-message', encodedMessage);
+    }, 'Edit Note:', initialMsg);
+}
+
+function saveEditorRange() {
+    const editor = document.getElementById('editor');
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        if (editor.contains(range.commonAncestorContainer)) {
+            savedEditorRange = range.cloneRange();
+        }
+    }
+}
+const editor = document.getElementById('editor');
+editor.addEventListener('keydown', saveEditorRange);
+editor.addEventListener('click', saveEditorRange);
+editor.addEventListener('click', insertCursorOnMouseDown);
+editor.addEventListener('mouseup', function() { 
+    saveEditorRange();  
+    if (currentFixedHighlighter != null) {
+        applyHighlightAndFont(currentFixedHighlighter, true);
+    }
+
+});
+editor.addEventListener('keydown', saveEditorRange);
+
+
+
+function insertHtmlAtSavedRange(html) {
+    if (!savedEditorRange) {
+        setStatus("No saved cursor position to insert HTML.");
+        return;
+    }
+    const fragment = document.createRange().createContextualFragment(html);
+    const range = savedEditorRange.cloneRange();
+    range.deleteContents();
+    range.insertNode(fragment);
+    setStatus("HTML inserted at cursor.");
+}
+
+function showHtmlInsertPrompt() {
+    showTextPopup(insertHtmlAtSavedRange, '');
+}
+
+// ... (rest of your script remains unchanged)
+
+function matchAndHighlightBrackets() {
+  const editor = document.getElementById('editor');
+  const selection = window.getSelection();
+  
+
+  const range = savedEditorRange;
+  if(range == null) return;
+  const cursorNode = range.startContainer;
+  const cursorOffset = range.startOffset;
+
+  // Flatten the DOM content and map text offsets to nodes
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null);
+  let node, text = '', nodes = [];
+
+  while ((node = walker.nextNode())) {
+    const start = text.length;
+    const value = node.textContent;
+    text += value;
+    nodes.push({ node, start, end: start + value.length });
+  }
+
+  // Determine cursor position in flat text
+  let globalOffset = -1;
+  for (const n of nodes) {
+    if (n.node === cursorNode) {
+      globalOffset = n.start + cursorOffset;
+      break;
+    }
+  }
+  if (globalOffset === -1) return;
+
+  const brackets = {
+    '(': ')', '[': ']', '{': '}', 
+    ')': '(', ']': '[', '}': '{'
+  };
+
+  const openSet = new Set(['(', '[', '{']);
+  const closeSet = new Set([')', ']', '}']);
+
+  const char = text[globalOffset] || text[globalOffset - 1];
+  const isOpening = openSet.has(char);
+  const matchChar = brackets[char];
+  const startOffset = isOpening ? globalOffset : globalOffset ;
+
+  if (!matchChar) return;
+
+  // Stack-based matching
+  let stack = 0;
+  let matchOffset = -1;
+
+  if (isOpening) {
+    for (let i = startOffset + 1; i < text.length; i++) {
+      const c = text[i];
+      if (c === char) stack++;
+      else if (c === matchChar) {
+        if (stack === 0) {
+          matchOffset = i;
+          break;
+        } else stack--;
+      }
+    }
+  } else {
+    for (let i = startOffset - 1; i >= 0; i--) {
+      const c = text[i];
+      if (c === char) stack++;
+      else if (c === matchChar) {
+        if (stack === 0) {
+          matchOffset = i;
+          break;
+        } else stack--;
+      }
+    }
+  }
+
+  if (matchOffset === -1) return;
+
+
+  const color = randomHilightColor();
+  if( startOffset > matchOffset) {
+      //highlight startOffset first and matchOffset later
+      applyHighlightToMatch(startOffset, nodes, color);
+      applyHighlightToMatch(matchOffset, nodes, color);
+  } else {
+      //apply matchOffset first and matchOffset later
+      applyHighlightToMatch(matchOffset, nodes, color);
+      applyHighlightToMatch(startOffset, nodes, color);
+  }
+
+}
+
+// Helper to find node and relative offset for a given global offset
+function findNodeAtOffset(offset, nodes) {
+    for (const { node, start, end } of nodes) {
+      if (offset >= start && offset < end) {
+        return { node, offset: offset - start };
+      }
+    }
+    return null;
+}
+
+function applyHighlightToMatch(startOffset, nodes, color) {
+  const match = findNodeAtOffset(startOffset, nodes);
+  if (!match ) return;
+
+
+  const r1 = document.createRange();
+  r1.setStart(match.node, match.offset);
+  r1.setEnd(match.node, match.offset + 1);
+  const span = document.createElement('span');
+  span.style.backgroundColor = color;
+  span.className = "highlight";
+  r1.surroundContents(span);
+}
+
+
+function indentSelectedLines(indent = true) {
+    const editor = document.getElementById('editor');
+    const range = savedEditorRange;
+    if (!range || !editor.contains(range.commonAncestorContainer)) return;
+    
+    if (range.collapsed) {
+        tabPressedNoSelection(indent, range); 
+        return;
+    }
+
+    // Get newline-preserving content
+    const originalText = getTextWithNewlinesFromRange(range);
+    if (!originalText) return;
+
+    event.preventDefault();
+    const lines = originalText.split(/\r?\n/);
+    const modifiedLines = lines.map(line => {
+        if (indent) {
+            return '    ' + line;
+        } else {
+            if (line.startsWith('    ')) return line.slice(4);
+            else if (line.startsWith('   ')) return line.slice(3);
+            else if (line.startsWith('  ')) return line.slice(2);
+            else if (line.startsWith(' ')) return line.slice(1);
+            else if (line.startsWith('\t')) return line.slice(1);
+            else return line;
+        }
+    });
+
+    const updatedText = modifiedLines.join('\n');
+
+    // Replace range with modified content
+    range.deleteContents();
+    const newNode = document.createTextNode(updatedText);
+    range.insertNode(newNode);
+
+    setStatus(indent ? "Indented selected lines." : "Unindented selected lines.");
+    window.getSelection().removeAllRanges();
+}
+
+function getRangeBeforeCursor(range, n = 4) {
+    const resultRange = document.createRange();
+    let remaining = n;
+    let { startContainer, startOffset } = range;
+    
+    // Initialize result range to same point
+    resultRange.setStart(startContainer, startOffset);
+    resultRange.setEnd(startContainer, startOffset);
+
+    while (remaining > 0) {
+        if (startContainer.nodeType === Node.TEXT_NODE) {
+            const available = Math.min(startOffset, remaining);
+            if (available > 0) {
+                startOffset -= available;
+                resultRange.setStart(startContainer, startOffset);
+                remaining -= available;
+                if (remaining === 0) break;
+            }
+        }
+
+        // Move to previous node in the DOM
+        const previous = getPreviousTextNode(startContainer);
+        if (!previous) break;
+        startContainer = previous;
+        startOffset = previous.textContent.length;
+    }
+
+    return resultRange;
+}
+
+function getPreviousTextNode(node) {
+    while (node) {
+        if (node.previousSibling) {
+            node = node.previousSibling;
+            // Go to the last descendant if it's an element
+            while (node && node.lastChild) {
+                node = node.lastChild;
+            }
+        } else {
+            node = node.parentNode;
+        }
+
+        if (node && node.nodeType === Node.TEXT_NODE) {
+            return node;
+        }
+    }
+    return null;
+}
+
+
+function  tabPressedNoSelection(indent, range) {
+
+        if (!indent) {
+            
+            var deleteRange = getRangeBeforeCursor(range, 4);
+            var deleteRangeContent = deleteRange.toString();
+            if(deleteRangeContent === '    '){
+                deleteRange.deleteContents();
+                // Post-process: Normalize parent container to clean up any fragmented text nodes
+                const container = deleteRange.startContainer.nodeType === Node.ELEMENT_NODE
+                    ? deleteRange.startContainer
+                    : deleteRange.startContainer.parentNode;
+            
+                container.normalize(); // merges adjacent text nodes
+            }
+            
+            
+        } else {
+            
+            // TAB: insert 4 spaces at cursor
+            const spaces = document.createTextNode('    ');
+            range.insertNode(spaces);
+
+            // Move cursor after inserted spaces
+            range.setStartAfter(spaces);
+            range.collapse(true);
+             var selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    
+};
+
+
+document.addEventListener('keydown', function(event) {
+    
+    if(event.ctrlKey && !event.altKey) {
+    
+        if (event.key.toLowerCase() === 'm') {
+            event.preventDefault(); // prevent default browser behavior if any
+            showNoteInputPopup();
+        } else if (event.key.toLowerCase() === 'l') {
+            event.preventDefault(); // prevent default browser behavior if any
+            startRecording();
+        } else if (event.key === 'q') {
+            event.preventDefault();
+            showJsEvalPopup();
+        } else if (event.key === 'b') {
+            event.preventDefault();
+            if (toolbarsVisible) {
+                hideTools();
+            } else {
+                showTools();
+            }
+        } else  if (event.key.toLowerCase() === 'i') {
+           event.preventDefault();
+           showHtmlInsertPrompt();
+        } else if(event.key.toLowerCase() === 'h') {
+           event.preventDefault();
+           help();
+        } else if (/^[1-7]$/.test(event.key)) { 
+             event.preventDefault();
+             var searchBox = document.getElementById("searchBox"+event.key);
+             const selection = window.getSelection();
+             if (selection.rangeCount === 0 || selection.isCollapsed) {
+                  const keyNum = parseInt(event.key);
+        
+                   for (let i = 1; i <= 7; i++) {
+                        const res = document.getElementById(`searchResults${i}`);
+                        if (res) res.style.display = (i === keyNum) ? 'block' : 'none';
+                    }
+                   return;
+             }
+             searchBox.value = selection.toString();
+             searchBox.focus();
+        }
+
+    } else if (event.ctrlKey && event.altKey) {
+        if (event.key.toLowerCase() === 'm') {
+          event.preventDefault();
+          matchAndHighlightBrackets(); 
+        } else if (event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            showImageScalingPopup();
+        } else if (event.key.toLowerCase() === 's') {
+            event.preventDefault();
+            save();
+        } else if (event.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            undo();
+        } else if (event.key.toLowerCase() === 'y') {
+            event.preventDefault();
+            redo();
+        }  if(event.key.toLowerCase() === 'c') {
+           event.preventDefault();
+           clearAllHighlight();
+        } if (event.key.toLowerCase() === 'r') {
+            event.preventDefault();
+            speakSelection();
+        } 
+            
+        
+    } else if (cursors.length == 0 && event.key === 'Enter' && event.target.id === 'editor') {
+        event.preventDefault();
+        smartReturnPress();
+    } else if (cursors.length == 0 &&  (event.key === '}' || event.key === '{')) {
+        event.preventDefault();
+        handleBraceKey(event);
+     }
+     else if (cursors.length == 0 && event.key === 'Tab') {
+        event.preventDefault();
+        indentSelectedLines(!event.shiftKey);
+     } else if (cursors.length == 0 && event.key === 'Escape') {
+        event.preventDefault();
+        showJsEvalPopup();
+     } else if (cursors.length > 0 && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+
+       if (event.key === 'Delete') {
+           
+            deleteAtCursors();
+            
+        } else if (event.key === 'Backspace') {
+           
+           backspaceAtCursors(); 
+            
+        } else if (event.key.length == 1) {
+      
+           insertTextAtCursors(event.key);
+        } else if (event.key == 'Enter') {
+            insertTextAtCursors("\n");
+        } else if (event.key == 'Tab') {
+            insertTextAtCursors(" ");
+            updateCursorVisualPositions();
+            insertTextAtCursors(" ");
+            updateCursorVisualPositions();
+            insertTextAtCursors(" ");
+            updateCursorVisualPositions();
+            insertTextAtCursors(" ");
+        }else if (event.key === 'ArrowLeft') {
+           
+            moveCursors('left');
+        } else if (event.key === 'ArrowRight') {
+           
+            moveCursors('right');
+        }
+        
+
+        updateCursorVisualPositions();
+    }
+     
+});
+
+
+
+function cursorsAtStart() {
+    const range = savedEditorRange;
+    if (!range || range.collapsed) return;
+
+    const editor = document.getElementById('editor');
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+
+    const lines = new Map(); // key: top position → { node, offset, left }
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+
+        if (!range.intersectsNode(node)) continue;
+        if (!node.textContent.trim()) continue; // skip whitespace-only
+
+        const r = document.createRange();
+        r.selectNodeContents(node);
+        const rects = Array.from(r.getClientRects());
+
+        rects.forEach(rect => {
+            const key = Math.round(rect.top);
+            const left = rect.left;
+
+            // Check if this is the leftmost position on this line
+            if (!lines.has(key) || left < lines.get(key).left) {
+                // Map to offset 0 of this text node
+                lines.set(key, { node: node, offset: 0, left: left });
+            }
+        });
+    }
+
+    const newCursors = [];
+
+    for (const { node, offset } of lines.values()) {
+        const r = document.createRange();
+        r.setStart(node, offset);
+        r.collapse(true);
+        newCursors.push({ range: r, span: null });
+    }
+
+    cursors = newCursors;
+    updateCursorVisualPositions();
+}
+
+
+function getClientRectsSafe(node) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    return Array.from(range.getClientRects());
+}
+
+function cursorsAtEnd() {
+    const range = savedEditorRange;
+    if (!range || range.collapsed) return;
+
+    const editor = document.getElementById('editor');
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+
+    const lines = new Map(); // lineKey (top position) -> { node, offset }
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+
+        if (!range.intersectsNode(node)) continue;
+
+        const rects = getClientRectsSafe(node);
+        const len = node.textContent.length;
+
+        rects.forEach(rect => {
+            const key = Math.round(rect.top); // group by top position (line)
+            const existing = lines.get(key);
+
+            if (!existing || rect.right > existing.right) {
+                // Place cursor at end of this text node on this visual line
+                lines.set(key, {
+                    node,
+                    offset: len,
+                    right: rect.right
+                });
+            }
+        });
+    }
+
+    const newCursors = [];
+
+    for (const { node, offset } of lines.values()) {
+        const r = document.createRange();
+        r.setStart(node, offset);
+        r.collapse(true);
+        newCursors.push({ range: r });
+    }
+
+    cursors = newCursors;
+    updateCursorVisualPositions();
+
+}
+
+
+
+
+
+let cursors = [];
+function clearCursorSpans() {
+    document.querySelectorAll('.cursor').forEach(span => {
+        span.remove();
+    });
+}
+
+
+
+function getNextTextNode(node) {
+    while (node) {
+        if (node.nextSibling) {
+            node = node.nextSibling;
+            // Go deep into the first text descendant
+            while (node && node.firstChild) {
+                node = node.firstChild;
+            }
+        } else {
+            node = node.parentNode;
+        }
+
+        if (!node || node.nodeType === Node.TEXT_NODE) return node;
+    }
+    return null;
+}
+
+function getNextTextNodeDeep(node) {
+    const editor = document.getElementById('editor');
+    while (node) {
+        if (node.firstChild) {
+            node = node.firstChild;
+        } else {
+            while (node && !node.nextSibling) {
+                node = node.parentNode;
+                if (!editor.contains(node)) return null;
+            }
+            if (node) node = node.nextSibling;
+        }
+
+        if (node && node.nodeType === Node.TEXT_NODE && node.textContent.length > 0 && editor.contains(node)) {
+            return node;
+        }
+    }
+    return null;
+}
+
+function getPreviousTextNodeDeep(node) {
+    const editor = document.getElementById('editor');
+    while (node) {
+        if (node.previousSibling) {
+            node = node.previousSibling;
+            while (node && node.lastChild) {
+                node = node.lastChild;
+            }
+        } else {
+            node = node.parentNode;
+            if (!editor.contains(node)) return null;
+        }
+
+        if (node && node.nodeType === Node.TEXT_NODE && node.textContent.length > 0 && editor.contains(node)) {
+            return node;
+        }
+    }
+    return null;
+}
+
+
+function backspaceAtCursors() {
+    const editor = document.getElementById('editor');
+    const newCursors = [];
+
+    clearCursorSpans();
+
+    const sorted = [...cursors].sort((a, b) =>
+        b.range.compareBoundaryPoints(Range.START_TO_START, a.range)
+    );
+
+    sorted.forEach(cursor => {
+        const range = cursor.range;
+
+        if (!range.collapsed) return;
+
+        let container = range.startContainer;
+        let offset = range.startOffset;
+
+        if (!editor.contains(container)) return;
+
+        // Dive into child text node if needed
+        if (container.nodeType === Node.ELEMENT_NODE) {
+            if (container.childNodes[offset - 1]?.nodeType === Node.TEXT_NODE) {
+                container = container.childNodes[offset - 1];
+                offset = container.textContent.length;
+            } else {
+                return;
+            }
+        }
+
+        // Case 1: Backspace within the same node
+        if (container.nodeType === Node.TEXT_NODE && offset > 0) {
+            const text = container.textContent;
+            container.textContent = text.slice(0, offset - 1) + text.slice(offset);
+
+            const newRange = document.createRange();
+            newRange.setStart(container, offset - 1);
+            newRange.collapse(true);
+            newCursors.push({ range: newRange, span: null });
+            return;
+        }
+
+        // Case 2: Backspace at offset 0 — go to previous node
+        const prev = getPreviousTextNodeDeep(container);
+        if (prev && prev.textContent.length > 0) {
+            const text = prev.textContent;
+            const newText = text.slice(0, -1);
+            prev.textContent = newText;
+
+            const newRange = document.createRange();
+            newRange.setStart(prev, newText.length);
+            newRange.collapse(true);
+            newCursors.push({ range: newRange, span: null  });
+            return;
+        }
+
+        // Case 3: Nothing to delete — retain cursor
+        const fallback = document.createRange();
+        fallback.setStart(container, offset);
+        fallback.collapse(true);
+        newCursors.push({ range: fallback, span: null  });
+    });
+
+    cursors = newCursors;
+}
+
+
+
+function deleteAtCursors() {
+    const editor = document.getElementById('editor');
+    const newCursors = [];
+
+    clearCursorSpans();
+
+    const sorted = [...cursors].sort((a, b) =>
+        b.range.compareBoundaryPoints(Range.START_TO_START, a.range)
+    );
+
+    sorted.forEach(cursor => {
+        const range = cursor.range;
+
+        if (!range.collapsed) return;
+
+        let container = range.startContainer;
+        let offset = range.startOffset;
+
+        if (!editor.contains(container)) return;
+
+        if (container.nodeType === Node.ELEMENT_NODE) {
+            if (container.childNodes[offset]?.nodeType === Node.TEXT_NODE) {
+                container = container.childNodes[offset];
+                offset = 0;
+            } else {
+                return;
+            }
+        }
+
+        if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent;
+            if (offset < text.length) {
+                container.textContent = text.slice(0, offset) + text.slice(offset + 1);
+                const newRange = document.createRange();
+                newRange.setStart(container, offset);
+                newRange.collapse(true);
+                newCursors.push({ range: newRange, span: null  });
+                return;
+            }
+        }
+
+        // Fallback: move to next available visible text node
+        let next = getNextTextNodeDeep(container);
+        if (next && next.textContent.length > 0) {
+            next.textContent = next.textContent.slice(1);
+            const newRange = document.createRange();
+            newRange.setStart(next, 0);
+            newRange.collapse(true);
+            newCursors.push({ range: newRange, span: null  });
+            return;
+        }
+
+        // Nothing found — keep the same cursor
+        const fallback = document.createRange();
+        fallback.setStart(container, offset);
+        fallback.collapse(true);
+        newCursors.push({ range: fallback, span: null  });
+    });
+
+    cursors = newCursors;
+}
+
+
+function updateCursorVisualPositions() {
+    const editor = document.getElementById('editor');
+
+    // Clean up node fragmentation
+    editor.normalize();
+
+    // Remove all old cursor spans
+    cursors.forEach(({ span }) => {
+        if (span && span.parentNode) {
+            span.remove();
+        }
+    });
+
+    cursors.forEach(cursor => {
+        const range = cursor.range;
+        const container = range.startContainer;
+
+        // ✅ Safety check: container must be in the DOM
+        if (!editor.contains(container)) {
+            console.warn("Cursor container not in editor:", container);
+            return;
+        }
+
+        // ✅ Clamp offset to prevent overrun
+        if (container.nodeType === Node.TEXT_NODE) {
+            const maxOffset = container.textContent.length;
+            if (range.startOffset > maxOffset) {
+                range.setStart(container, maxOffset);
+                range.collapse(true);
+            }
+        }
+
+        const cursorSpan = document.createElement("span");
+        cursorSpan.className = "cursor";
+
+        try {
+            range.insertNode(cursorSpan);
+            range.setStartAfter(cursorSpan);
+            range.collapse(true);
+            cursor.span = cursorSpan;
+        } catch (e) {
+            console.warn("Failed to insert cursor span:", e);
+        }
+    });
+}
+
+
+function showImageScalingPopup() {
+    const popup = document.getElementById('scaleImagePopup');
+    const input = document.getElementById('scaleImageInput');
+    popup.style.display = 'block';
+    input.value = '';
+    input.focus();
+}
+
+function scaleImagePressEnter(event) {
+        
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            submitImageScaling();
+        }
+}
+
+function closeScaleImagePopup() {
+    document.getElementById('scaleImagePopup').style.display = 'none';
+}
+
+function submitImageScaling() {
+    const scaleStr = document.getElementById('scaleImageInput').value.trim();
+    closeScaleImagePopup();
+
+    const scale = parseFloat(scaleStr);
+    if (isNaN(scale) || scale <= 0) {
+        alert("Please enter a valid positive number.");
+        return;
+    }
+
+    applyImageScaling(scale);
+}
+
+function applyImageScaling(scale) {
+    const editor = document.getElementById('editor');
+    let imagesToScale = [];
+
+    if (savedEditorRange && editor.contains(savedEditorRange.commonAncestorContainer)) {
+        const fragment = savedEditorRange.cloneContents();
+        imagesToScale = [...fragment.querySelectorAll('img')];
+
+        if (imagesToScale.length > 0) {
+            // Replace original range content with updated images
+            const updatedFragment = savedEditorRange.cloneContents();
+            const updatedImgs = updatedFragment.querySelectorAll('img');
+
+            updatedImgs.forEach(img => {
+                const newWidth = img.width * (scale / 100);
+                img.width = newWidth;
+                img.removeAttribute('height');
+            });
+
+            // Replace contents of the range
+            const range = savedEditorRange.cloneRange();
+            range.deleteContents();
+            range.insertNode(updatedFragment);
+
+            savedEditorRange = null;
+            window.getSelection().removeAllRanges();
+            setStatus(`Scaled ${imagesToScale.length} image(s) to ${scale}%.`);
+            return;
+        }
+    }
+
+    // Fallback: find nearest image to caret
+    if (savedEditorRange && editor.contains(savedEditorRange.commonAncestorContainer)) {
+    
+
+        let node = savedEditorRange.startContainer;
+        //if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    
+        let nearestImage = null;
+        let minDistance = Infinity;
+    
+        editor.querySelectorAll('img').forEach(img => {
+            const dist = Math.abs(img.compareDocumentPosition(node));
+            if (dist < minDistance) {
+                nearestImage = img;
+                minDistance = dist;
+            }
+        });
+    
+        if (nearestImage) {
+            nearestImage.width = nearestImage.width * (scale / 100);
+            nearestImage.removeAttribute('height');
+            setStatus(`Scaled nearest image to ${scale}%.`);
+        } else {
+            alert("No image found near the cursor.");
+        }
+    }
+}
+
+
+// Handles behavior for { and } keys
+function handleBraceKey(event) {
+  const editor = document.getElementById('editor');
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+
+  const range = selection.getRangeAt(0);
+  const node = range.startContainer;
+  const offset = range.startOffset;
+
+  if (!editor.contains(node) || node.nodeType !== Node.TEXT_NODE) return;
+
+  const lineStartOffset = node.textContent.lastIndexOf('\n', offset - 1) + 1;
+  const lineEndOffset = node.textContent.indexOf('\n', offset);
+  const lineEnd = lineEndOffset === -1 ? node.textContent.length : lineEndOffset;
+
+  const lineText = node.textContent.slice(lineStartOffset, lineEnd);
+
+  if (event.key === '}') {
+    if (/^\s+$/.test(lineText)) {
+      // Remove up to 4 leading spaces
+      let newLineText = lineText;
+      for (let i = 0; i < 4; i++) {
+        if (newLineText.startsWith(' ')) {
+          newLineText = newLineText.slice(1);
+        } else {
+          break;
+        }
+      }
+      const before = node.textContent.slice(0, lineStartOffset);
+      const after = node.textContent.slice(lineEnd);
+      const updated = before + newLineText + after;
+
+      node.textContent = updated;
+
+      // Reset cursor
+      const newOffset = before.length + newLineText.length;
+      const newRange = document.createRange();
+      newRange.setStart(node, newOffset);
+      newRange.setEnd(node, newOffset);
+
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+
+      event.preventDefault();
+    }
+  } else if (event.key === '{') {
+    event.preventDefault();
+
+    // Insert "{}" and move cursor between
+    const before = node.textContent.slice(0, offset);
+    const after = node.textContent.slice(offset);
+    node.textContent = before + '{}' + after;
+
+    const newRange = document.createRange();
+    newRange.setStart(node, offset + 1);
+    newRange.setEnd(node, offset + 1);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
+}
+
+
+
+
+/// Javscript eval
+
+
+const jsHistory = [];
+let jsHistoryIndex = -1;
+function showJsEvalPopup() {
+    const popup = document.getElementById('jsEvalPopup');
+    const input = document.getElementById('jsEvalInput');
+    popup.style.display = 'block';
+    input.value = '';
+    input.focus();
+
+    jsHistoryIndex = jsHistory.length;
+
+    input.onkeydown = function(event) {
+       
+        if (event.key === 'Enter') {
+              event.preventDefault();
+            const code = input.value.trim();
+            if (code) {
+                jsHistory.push(code);
+                jsHistoryIndex = jsHistory.length;
+            }
+
+            let toEval = code;
+            
+            if (/^[0-9]+yy/.test(toEval)) {
+                toEval = 'yy(' + toEval.slice(0,-2) + ')';
+            }
+            
+            if (/^[0-9]+dd/.test(toEval)) {
+                toEval = 'dd(' + toEval.slice(0,-2) + ')';
+            }
+            
+            if (!/[()]/.test(toEval) && /^[a-zA-Z_$][\w$]*$/.test(toEval)) {
+                toEval += '()';
+            }
+
+            try {
+                const result = eval(toEval);
+                setStatus('JS Eval Result: ' + result);
+            } catch (e) {
+                setStatus('Error: ' + e.message);
+                console.error('[JS Eval Error]', e);
+            }
+
+            popup.style.display = 'none';
+        }
+        else if (event.key === 'ArrowUp') {
+             event.preventDefault();
+            if (jsHistoryIndex > 0) {
+                jsHistoryIndex--;
+                input.value = jsHistory[jsHistoryIndex];
+                
+            }
+        }
+        else if (event.key === 'ArrowDown') {
+             event.preventDefault();
+            if (jsHistoryIndex < jsHistory.length - 1) {
+                jsHistoryIndex++;
+                input.value = jsHistory[jsHistoryIndex];
+            } else {
+                jsHistoryIndex = jsHistory.length;
+                input.value = '';
+            }
+            
+        }
+        else if (event.key === 'Escape') {
+            popup.style.display = 'none';
+             event.preventDefault();
+        }
+    };
+}
+
+//// Audio recording ///
+
+let mediaRecorder;
+let audioChunks = [];
+
+function startRecording() {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) {
+                audioChunks.push(e.data);
+            }
+        };
+
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const dataURL = reader.result;
+
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = dataURL;
+                audio.setAttribute("style", "width: 24px; height: 15px; background: #aafba2; background-color: #aafba2; foreground: #aafba2; ");
+
+                insertNodeAtCursor(audio); // Insert into editor
+
+                audioChunks = [];
+                hideStopRecordingButton();
+            };
+
+            reader.readAsDataURL(audioBlob); // Converts blob to base64 data URL
+        };
+
+        mediaRecorder.start();
+        showStopRecordingButton();
+        
+    }).catch(err => {
+        alert("Microphone access denied or unavailable.");
+        console.error(err);
+    });
+}
+
+function showStopRecordingButton() {
+   const popup = document.getElementById('stopRecordingPopup');
+    popup.style.display = 'block';
+}
+function hideStopRecordingButton() {
+    const popup = document.getElementById('stopRecordingPopup');
+    popup.style.display = 'none';
+}
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+}
+
+function insertNodeAtCursor(node) {
+    const editor = document.getElementById('editor');
+    const range = savedEditorRange;
+
+    if (!range || !editor.contains(range.commonAncestorContainer)) {
+        alert("No valid insertion point found. Please place the cursor inside the editor before opening the popup.");
+        return;
+    }
+
+    range.collapse(false);
+    range.insertNode(node);
+}
+
+/// End of Audio recording
+document.getElementById('editorBgColor').addEventListener('input', function(event) {
+    const editor = document.getElementById('editor');
+    editor.style.backgroundColor = event.target.value;
+    
+});
+
+//hyperlinking
+let lastTargetId = null;
+
+function generateRandomId(length = 12) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let id = '';
+    for (let i = 0; i < length; i++) {
+        id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return 'edz' + id;
+}
+
+function target(optionalId = null) {
+    if (!savedEditorRange) {
+        setStatus("No selection saved to mark as target.");
+        return;
+    }
+
+    const range = savedEditorRange.cloneRange();
+    const id = optionalId || generateRandomId();
+
+    const span = document.createElement('span');
+    span.id = id;
+    span.textContent = range.toString();
+
+    range.deleteContents();
+    range.insertNode(span);
+
+    lastTargetId = id;
+    setStatus("Target set with id: " + id);
+}
+
+function link(optionalId = null) {
+    if (!savedEditorRange) {
+        setStatus("No selection saved to create link.");
+        return;
+    }
+
+    const range = savedEditorRange.cloneRange();
+    const targetId = optionalId || lastTargetId;
+
+    if (!targetId) {
+        setStatus("No target ID available to link to.");
+        return;
+    }
+
+    const anchor = document.createElement('a');
+    anchor.href = "#" + targetId;
+    anchor.textContent = range.toString();
+    anchor.setAttribute("onclick", "selectText('"+ targetId + "')");
+    
+
+    range.deleteContents();
+    range.insertNode(anchor);
+
+    setStatus('Link created to target id: ' + targetId);
+}
+
+
+function selectText(containerid) {
+    if (document.selection) { // IE
+        var range = document.body.createTextRange();
+        element = document.getElementById(containerid);
+        if(element != null)
+        {
+            range.moveToElementText(element);
+            range.select();
+            element.scrollIntoView();
+            setTimeout(function() {
+                    element.scrollIntoView({ behavior: "smooth" });
+                }, 1000);
+        }
+    } else if (window.getSelection) {
+        var range = document.createRange();
+        element = document.getElementById(containerid);
+        if (element != null)
+        {
+            range.selectNode(element);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            element.scrollIntoView();
+            setTimeout(function() {
+                    element.scrollIntoView({ behavior: "smooth" });
+                }, 1000);
+            
+        }
+    }
+}
+var toolbarsVisible = true;
+function hideTools() {
+    const toolbars = document.querySelectorAll('.toolbars');
+    toolbars.forEach(el => el.style.display = 'none');
+    toolbarsVisible = false;
+}
+
+function showTools() {
+    const toolbars = document.querySelectorAll('.toolbars');
+    toolbars.forEach(el => el.style.display = 'block');
+    toolbarsVisible = true;
+}
+
+function xlink(optionalUrl = null) {
+    if (!savedEditorRange) {
+        setStatus("No selection saved to create external link.");
+        return;
+    }
+
+    function insertExternalLink(url) {
+        if (!url) {
+            setStatus("No URL provided.");
+            return;
+        }
+
+        const range = savedEditorRange.cloneRange();
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.target = "_blank";
+        anchor.textContent = range.toString();
+
+        range.deleteContents();
+        range.insertNode(anchor);
+
+        setStatus("External link created to: " + url);
+    }
+
+    if (optionalUrl) {
+        insertExternalLink(optionalUrl);
+    } else {
+        showTextPopup(insertExternalLink, 'Enter URL:', "https://");
+    }
+}
+// Postprocessing for email 
+
+document.getElementById('editor').addEventListener('copy', copyHandler);
+
+function copyHandler(e) {
+    e.preventDefault(); // block default copy
+    setStatus("Copying to clipboard");
+
+    const selection = window.getSelection();
+    if (selection.isCollapsed) return;
+
+    const range = selection.getRangeAt(0);
+    const container = document.createElement('div');
+    container.appendChild(range.cloneContents());
+    
+    // Optional: Clean up & preserve note buttons
+    container.querySelectorAll('.note-button').forEach(btn => {
+        // Serialize data-message as an attribute (won't be stripped if included cleanly)
+        btn.setAttribute('data-message', btn.dataset.message);
+    });
+    
+    // Process anchor tags with onclick
+    container.querySelectorAll('a[onclick]').forEach(anchor => {
+        const onclick = anchor.getAttribute('onclick');
+        const match = onclick?.match(/selectText\(['"](.+?)['"]\)/);
+        if (match) {
+            anchor.setAttribute('data-select-id', match[1]);
+        }
+        anchor.removeAttribute('onclick'); // remove the JS inline
+    });
+
+    
+    // Apply post-processing to preserve indentation
+    const html = postProcessForEmail(container.innerHTML);
+    
+
+    // Set the processed HTML to clipboard
+    e.clipboardData.setData('text/html', html);
+    e.clipboardData.setData('text/plain', container.textContent);
+}
+
+document.getElementById('editor').addEventListener('paste', function (event) {
+    // Allow browser paste first
+    setTimeout(() => {
+        // After paste is complete, rebind note buttons
+        const editor = document.getElementById('editor');
+        const buttons = editor.querySelectorAll('button.note-button');
+
+        buttons.forEach(btn => {
+            if (!btn.dataset.message) return;
+
+            // Remove inline onclick if it somehow persisted (rare)
+            btn.removeAttribute('onclick');
+            btn.setAttribute("onclick", 'noteButtonClickHandler(event)');
+
+        });
+        
+        editor.querySelectorAll('a[data-select-id]').forEach(anchor => {
+            const id = anchor.getAttribute('data-select-id');
+            if (id) {
+                anchor.setAttribute("onclick", "selectText('" + id + "')");
+            }
+        });
+        
+    }, 100); // small delay to wait for paste to finish
+});
+
+function postProcessForEmail(html) {
+  const lines = html.split(/(<[A-Za-z][^>]*>)|(\n)/i); // split includes the <br> tags
+  let output = '';
+  //console.log("lines=" + lines);
+  for (let i = 0; i < lines.length; i++) {
+    const part = lines[i];
+
+    if(part === undefined)
+    {
+      //ignore
+    }
+    else if (/(^<br\s*\/?>$)|(^\n$)/i.test(part)) {
+        
+      output += "<br>"; // keep the <br> tags as-is
+    } else {
+        
+      // Replace leading whitespace with &nbsp; (spaces and tabs)
+      output += part.replace(/^\s+/, match =>
+        match.replace(/ /g, '&nbsp;').replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+      );
+    }
+  }
+
+  return output;
+}
+
+function copyEditorToClipboard() {
+    const editor = document.getElementById('editor');
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    document.execCommand('copy');
+}
+function setDefaultFont() {
+  const font = document.getElementById("fontChooser").value;
+  const size = document.getElementById("sizeChooser").value;
+  const editor = document.getElementById("editor");
+
+  if (font !== "No Selection") {
+    editor.style.fontFamily = font;
+  }
+
+  if (size !== "0") {
+    switch (size) {
+      case "1": editor.style.fontSize = "x-small"; break;
+      case "3": editor.style.fontSize = "medium"; break;
+      case "5": editor.style.fontSize = "x-large"; break;
+      case "7": editor.style.fontSize = "xx-large"; break;
+      default: editor.style.fontSize = "medium";
+    }
+  }
+}
+
+
+//////////////////////////////////////////////
+let undoStack = [];
+let redoStack = [];
+function save() {
+    const editor = document.getElementById('editor');
+    const html = editor.innerHTML;
+    const selection = savedEditorRange ? savedEditorRange.cloneRange() : null;
+
+    undoStack.push({ html, selection });
+    redoStack = [];  // Clear redo on new action
+    setStatus("SAVE undoStackLength=" + undoStack.length + " redoStackLength="+redoStack.length);
+}
+
+function undo() {
+    setStatus("UNDO ength=" + undoStack.length + " redoStackLength="+redoStack.length);
+    if (undoStack.length === 0) return;
+
+    const editor = document.getElementById('editor');
+    const currentState = {
+        html: editor.innerHTML,
+        selection: savedEditorRange ? savedEditorRange.cloneRange() : null
+    };
+
+    redoStack.push(currentState);
+
+    const lastState = undoStack.pop();
+    editor.innerHTML = lastState.html;
+
+    if (lastState.selection) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(lastState.selection);
+        savedEditorRange = lastState.selection.cloneRange();
+    }
+    
+}
+
+function redo() {
+    setStatus("REDO : undoStackLength=" + undoStack.length + " redoStackLength="+redoStack.length);
+    if (redoStack.length === 0) return;
+
+    const editor = document.getElementById('editor');
+    const currentState = {
+        html: editor.innerHTML,
+        selection: savedEditorRange ? savedEditorRange.cloneRange() : null
+    };
+
+    undoStack.push(currentState);
+
+    const redoState = redoStack.pop();
+    editor.innerHTML = redoState.html;
+
+    if (redoState.selection) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(redoState.selection);
+        savedEditorRange = redoState.selection.cloneRange();
+    }
+
+}
+
+ //// Inverting color
+ 
+function darken() {
+    dark=true;
+    function traverseAndApplyDark(node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName?.toLowerCase();
+            const isFormControl = ['input', 'textarea', 'button', 'select'].includes(tag);
+
+            if (isFormControl) {
+                const style = window.getComputedStyle(node);
+                const bg = style.backgroundColor || 'rgb(255,255,255)';
+                const fg = style.color || 'rgb(17,17,17)';
+
+                node.style.backgroundColor = invertCSSColor(bg);
+                node.style.color = invertCSSColor(fg);
+                node.style.borderColor = invertCSSColor(style.borderColor || 'rgb(17,17,17)');
+                node.style.caretColor = invertCSSColor(fg);
+            } else {
+                node.style.backgroundColor = '#111111';
+                node.style.color = '#ffffff';
+            }
+        }
+
+        for (const child of node.childNodes) {
+            traverseAndApplyDark(child);
+        }
+    }
+    traverseAndApplyDark(document.body);
+    
+    invertHighlightClassColors();
+    
+    document.getElementById("editorBgColor").value='#111111';
+    document.getElementById("editor").style.backgroundColor='#111111';
+    document.getElementById("hlButton7").style.backgroundColor='#000000';
+    document.getElementById("editor").style.backgroundColor='#111111';
+    document.getElementById("colorChooser").value='#ffffff';
+    
+    const fileInput = document.getElementById("fileLoader");
+
+    fileInput.style.backgroundColor = '#111111';
+    fileInput.style.color = '#ffffff';
+    fileInput.style.border = '1px solid #ffffff';
+    
+
+    
+    setStatus("Dark mode applied");
+}
+
+function invertHighlightClassColors() {
+    for (const sheet of document.styleSheets) {
+        try {
+            for (const rule of sheet.cssRules) {
+                if (rule.selectorText.startsWith(".highlight")) {
+                    const currentColor = rule.style.backgroundColor;
+                    const inverted = invertCSSColor(currentColor);
+                    rule.style.backgroundColor = inverted;
+                }
+            }
+        } catch (e) {
+            // Some stylesheets (e.g. from extensions or cross-origin) may be restricted
+            continue;
+        }
+    }
+
+    
+}
+
+function invertCSSColor(rgb) {
+    const match = rgb.match(/rgba?\((\d+), (\d+), (\d+)/);
+    if (!match) return rgb;
+
+    const r = 255 - parseInt(match[1]);
+    const g = 255 - parseInt(match[2]);
+    const b = 255 - parseInt(match[3]);
+
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function help() {
+    document.getElementById("helpPopup").style.display = "block";
+}
+
+function closeHelp() {
+    document.getElementById("helpPopup").style.display = "none";
+}
+// Variables to store AWS config
+let awsAccessKey = '';
+let awsSecretAccessKey = '';
+let awsRegion = '';
+let awsBucketName = '';
+let awsFolderName = '';
+
+// Show popup
+function showAWSConfigPopup() {
+    // Pre-fill values if already set
+    document.getElementById('awsAccessKey').value = awsAccessKey || '';
+    document.getElementById('awsSecretKey').value = awsSecretAccessKey || '';
+    document.getElementById('awsRegion').value = awsRegion || '';
+    document.getElementById('awsBucket').value = awsBucketName || '';
+    document.getElementById('awsFolder').value = awsFolderName || '';
+
+    document.getElementById('awsConfigPopup').style.display = 'block';
+}
+
+
+// Save config to global variables
+function saveAWSConfig() {
+    awsAccessKey = document.getElementById('awsAccessKey').value.trim();
+    awsSecretAccessKey = document.getElementById('awsSecretKey').value.trim();
+    awsRegion = document.getElementById('awsRegion').value.trim();
+    awsBucketName = document.getElementById('awsBucket').value.trim();
+    awsFolderName = document.getElementById('awsFolder').value.trim();
+
+    document.getElementById('awsConfigPopup').style.display = 'none';
+
+    setStatus("AWS config stored.");
+}
+
+
+function saveToS3(filename) {
+    if (!awsAccessKey || !awsSecretAccessKey || !awsRegion || !awsBucketName || !awsFolderName) {
+        alert("AWS S3 configuration is incomplete.");
+        return;
+    }
+
+    AWS.config.update({
+        accessKeyId: awsAccessKey,
+        secretAccessKey: awsSecretAccessKey,
+        region: awsRegion
+    });
+
+    const s3 = new AWS.S3({
+    region: awsRegion,
+    endpoint: `https://s3.${awsRegion}.amazonaws.com`, // Explicit regional endpoint
+    s3ForcePathStyle: false // Ensure virtual-hosted style
+    });
+
+    const editorContent = document.getElementById("editor").innerHTML;
+    const key = awsFolderName.replace(/\/?$/, '/') + filename;
+
+    const params = {
+        Bucket: awsBucketName,
+        Key: key,
+        Body: editorContent,
+        ContentType: 'text/html'
+    };
+
+    console.log("Saving to:", params.Key);
+    s3.putObject(params, function(err, data) {
+        if (err) {
+            console.error("S3 Save Error:", err);
+            setStatus("❌ Save to S3 failed: " + err.message);
+        } else {
+            console.log("✅ Save successful:", data);
+            setStatus("✅ Editor content saved to S3.");
+        }
+    });
+}
+
+
+
+function loadFromS3(filename) {
+    if (!awsAccessKey || !awsSecretAccessKey || !awsRegion || !awsBucketName || !awsFolderName) {
+        alert("AWS S3 configuration is incomplete.");
+        return;
+    }
+
+    AWS.config.update({
+        accessKeyId: awsAccessKey,
+        secretAccessKey: awsSecretAccessKey,
+        region: awsRegion
+    });
+
+    const s3 = new AWS.S3({
+    region: awsRegion,
+    endpoint: `https://s3.${awsRegion}.amazonaws.com`, // Explicit regional endpoint
+    s3ForcePathStyle: false // Ensure virtual-hosted style
+   });
+
+    const key = awsFolderName.replace(/\/?$/, '/') + filename;
+
+    const params = {
+        Bucket: awsBucketName,
+        Key: key
+    };
+
+    console.log("Loading from:", params.Key);
+    s3.getObject(params, function(err, data) {
+        if (err) {
+            console.error("S3 Load Error:", err);
+            setStatus("❌ Load from S3 failed: " + err.message);
+        } else {
+            const htmlContent = data.Body.toString('utf-8');
+            document.getElementById("editor").innerHTML = htmlContent;
+            setStatus("✅ Editor content loaded from S3.");
+        }
+    });
+}
+
+function promptAndSaveToS3() {
+    const filename = prompt("Enter filename to save:", "editor-content");
+    if (filename && filename.trim() !== "") {
+        saveToS3(filename.trim());
+    } else {
+        setStatus("⚠️ Save cancelled or invalid filename.");
+    }
+}
+
+function promptAndLoadFromS3() {
+    const filename = prompt("Enter filename to load:", "editor-content");
+    if (filename && filename.trim() !== "") {
+        loadFromS3(filename.trim());
+    } else {
+        setStatus("⚠️ Load cancelled or invalid filename.");
+    }
+}
+
+function removeSpansWithClass(className) {
+    const editor = document.getElementById("editor");
+
+    if (!editor) {
+        console.warn("Editor element not found.");
+        return;
+    }
+
+    const spans = editor.querySelectorAll(`span.${className}`);
+
+    spans.forEach(span => {
+        const parent = span.parentNode;
+        while (span.firstChild) {
+            parent.insertBefore(span.firstChild, span);
+        }
+        parent.removeChild(span);
+    });
+
+    setStatus(`Removed ${spans.length} span(s) with class "${className}".`);
+}
+
+function removeSpanContentsForClass(className) {
+    const editor = document.getElementById("editor");
+
+    if (!editor) {
+        console.warn("Editor element not found.");
+        return;
+    }
+
+    const spans = editor.querySelectorAll(`span.${className}`);
+    let count = 0;
+
+    spans.forEach(span => {
+        span.remove();
+        count++;
+    });
+
+    setStatus(`❌ Removed ${count} span(s) with class "${className}" and their contents.`);
+}
+
+function removeEmptyLinesFromEditor() {
+    const editor = document.getElementById("editor");
+    if (!editor) return;
+
+    let removedCount = 0;
+
+    const isVisiblyEmpty = node => {
+        if (!node) return true;
+
+        // Check text-only lines
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent.trim() === '';
+        }
+
+        // If it's an element (DIV, P, etc.)
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            // Remove empty spans, <br>, or deeply empty wrappers
+            const text = node.innerText || node.textContent || '';
+            return text.trim() === '';
+        }
+
+        return false;
+    };
+
+    const children = Array.from(editor.childNodes);
+    children.forEach(node => {
+        if (isVisiblyEmpty(node)) {
+            editor.removeChild(node);
+            removedCount++;
+        }
+    });
+
+    setStatus(`🧹 Removed ${removedCount} visibly empty line(s).`);
+}
+
+function flattenParagraphsInEditor() {
+    const editor = document.getElementById("editor");
+    if (!editor) {
+        console.warn("Editor not found.");
+        return;
+    }
+
+    const paragraphs = Array.from(editor.querySelectorAll("p"));
+    let removedCount = 0;
+
+    paragraphs.forEach(p => {
+        const span = document.createElement("span");
+
+        // Move children to the span
+        while (p.firstChild) {
+            span.appendChild(p.firstChild);
+        }
+
+        // Add a <br> after each former paragraph to keep line breaks
+        span.appendChild(document.createElement("br"));
+
+        // Replace <p> with the new span+br
+        p.parentNode.replaceChild(span, p);
+        removedCount++;
+    });
+
+    setStatus(`📉 Flattened ${removedCount} <p> elements to inline blocks.`);
+}
+
+function removeListFormattingNewlines() {
+    const editor = document.getElementById("editor");
+    if (!editor) {
+        console.warn("Editor not found.");
+        return;
+    }
+
+    let html = editor.innerHTML;
+
+    // Remove whitespace after <li>
+    html = html.replace(/(<li[^>]*>)\s+/gi, '$1');
+    html = html.replace(/(<[ou]l[^>]*>)\s+/gi, '$1');
+    
+    // Remove whitespace before </li>, </ol>, and </ul>
+    html = html.replace(/\s+<\/li>/gi, '</li>');
+    html = html.replace(/\s+<\/ol>/gi, '</ol>');
+    html = html.replace(/\s+<\/ul>/gi, '</ul>');
+
+    editor.innerHTML = html;
+
+    setStatus("✨ Cleaned up whitespace inside and around list elements.");
+}
+
+function removeAllAnnotations() {
+    const editor = document.getElementById("editor");
+    if (!editor) {
+        console.warn("Editor not found.");
+        return;
+    }
+
+    // Customize this selector based on your annotation element structure
+    const selector = [
+        'annotation', // if using custom tags like <annotation>
+        'comment',    // or <comment> if applicable
+    ].join(',');
+
+    const annotations = editor.querySelectorAll(selector);
+    let count = 0;
+
+    annotations.forEach(el => {
+        el.remove();
+        count++;
+    });
+
+    setStatus(`❌ Removed ${count} annotation element(s).`);
+}
+
+
+
+function tidyUp() {
+    removeAllAnnotations();
+    removeSpanContentsForClass("katex-html");
+    removeListFormattingNewlines();
+    removeEmptyLinesFromEditor();
+    flattenParagraphsInEditor();
+}
+
+
+
+function logSelectedHTML() {
+    const selection = window.getSelection();
+    
+    if (!selection || selection.rangeCount === 0) {
+        console.log("No selection.");
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const fragment = range.cloneContents();
+
+    const container = document.createElement("div");
+    container.appendChild(fragment);
+
+    const html = container.innerHTML;
+
+    console.log("🔍 Selected HTML:");
+    console.log(html);
+}
+
+function logSpanContentsWithClass(className) {
+    const editor = document.getElementById("editor");
+
+    if (!editor) {
+        console.warn("Editor element not found.");
+        return;
+    }
+
+    const spans = editor.querySelectorAll(`span.${className}`);
+    
+    if (spans.length === 0) {
+        console.log(`No <span> elements found with class "${className}".`);
+        return;
+    }
+
+    console.log(`Found ${spans.length} <span> elements with class "${className}":`);
+    spans.forEach((span, index) => {
+        console.log("-----------------------------");
+        console.log(`[${index}]`, span.innerHTML);
+    });
+}
+/// Find /replace
+
+function runFindReplace() {
+    const findPattern = document.getElementById("findPattern").value;
+    const replaceText = document.getElementById("replaceText").value;
+    const useRegex = document.getElementById("useRegex").checked;
+    const caseSensitive = document.getElementById("caseSensitive").checked;
+    const cursorOnlyMode = document.getElementById("cursorOnlyMode").checked;
+    if(cursorOnlyMode){
+        addCursorsAtRegex(findPattern, useRegex, caseSensitive);
+        hideFindReplaceDialog();
+    } else{ 
+        replace(findPattern, replaceText, useRegex, caseSensitive);
+    }
+}
+
+function addCursorsAtRegex(pattern, useRegex = false, caseSensitive = false) {
+    const editor = document.getElementById('editor');
+    clearCursorSpans();
+    const newCursors = [];
+
+    // Build regex safely
+    let regex;
+    try {
+        if (useRegex) {
+            regex = new RegExp(pattern, 'g' + (caseSensitive ? '' : 'i'));
+        } else {
+            const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            regex = new RegExp(escaped, 'g' + (caseSensitive ? '' : 'i'));
+        }
+    } catch (e) {
+        setStatus("⚠️ Invalid regex pattern");
+        return;
+    }
+
+    // Flatten editor into plain text + offsets
+    const textNodes = [];
+    let flattened = '';
+    let offset = 0;
+
+    function traverse(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            if (text.trim() !== '') {
+                textNodes.push({ node, start: offset, end: offset + text.length });
+            }
+            flattened += text;
+            offset += text.length;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            for (let child of node.childNodes) {
+                traverse(child);
+            }
+        }
+    }
+
+    traverse(editor);
+
+    // Find all regex matches in flattened string
+    let match;
+    while ((match = regex.exec(flattened)) !== null) {
+        const matchStart = match.index;
+
+        // Map back to node + offset
+        for (const { node, start, end } of textNodes) {
+            if (start <= matchStart && matchStart < end) {
+                const localOffset = matchStart - start;
+                const range = document.createRange();
+                range.setStart(node, localOffset);
+                range.collapse(true);
+                newCursors.push({ range, span: null });
+                break;
+            }
+        }
+    }
+
+    cursors = newCursors;
+    updateCursorVisualPositions();
+    setStatus(`✅ ${newCursors.length} cursor(s) added for pattern: ${regex}`);
+}
+
+
+
+function replace(findPattern, replaceText, useRegex = true, caseSensitive = true)
+{
+    const editor = document.getElementById("editor");
+    if (!findPattern) {
+        alert("Please enter a pattern to find.");
+        return;
+    }
+
+    const flags = caseSensitive ? 'g' : 'gi';
+    let regex;
+
+    try {
+        regex = useRegex
+            ? new RegExp(findPattern, flags)
+            : new RegExp(escapeRegex(findPattern), flags);
+    } catch (e) {
+        alert("Invalid regular expression: " + e.message);
+        return;
+    }
+
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+    const replacements = [];
+
+    let node;
+    
+    
+    while (node = walker.nextNode()) {
+        if (regex.test(node.textContent)) {
+            const newText = node.textContent.replace(regex, replaceText);
+            replacements.push({ node, newText });
+        }
+    }
+
+    // Apply replacements
+    replacements.forEach(({ node, newText }) => {
+        node.textContent = newText;
+    });
+
+    hideFindReplaceDialog();
+    setStatus(`🔁 ${replacements.length} node(s) replaced.`);
+}
+
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function showFindReplaceDialog() {
+    document.getElementById("findReplaceDialog").style.display = "block";
+}
+
+function hideFindReplaceDialog() {
+    document.getElementById("findReplaceDialog").style.display = "none";
+}
+
+// Text to Speech
+let speechUtterance = null;
+
+function speakSelection() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        alert("Please select some text to speak.");
+        return;
+    }
+
+    const text = selection.toString().trim();
+    if (!text) {
+        alert("Selected text is empty.");
+        return;
+    }
+
+    if (speechSynthesis.speaking) {
+        speechSynthesis.cancel(); // Stop any existing speech
+    }
+
+    speechUtterance = new SpeechSynthesisUtterance(text);
+    speechSynthesis.speak(speechUtterance);
+
+    document.getElementById("stopSpeakingBtn").style.display = "block";
+
+    // Auto-hide stop button when done
+    speechUtterance.onend = () => {
+        document.getElementById("stopSpeakingBtn").style.display = "none";
+        setStatus("🗣️ Finished reading aloud.");
+    };
+
+    setStatus("🗣️ Reading selected text...");
+}
+
+function stopSpeaking() {
+    if (speechSynthesis.speaking) {
+        speechSynthesis.cancel();
+        setStatus("⏹️ Speech stopped.");
+    }
+    document.getElementById("stopSpeakingBtn").style.display = "none";
+}
+/// Cursor
+
+// Get the text content preserving newlines
+function getTextWithNewlinesFromRange(range) {
+    const fragment = range.cloneContents();
+    let result = '';
+
+    function traverse(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            result += node.textContent;
+        } else if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+            const tag = node.tagName?.toLowerCase();
+            if (['div', 'p', 'br', 'li'].includes(tag)) result += '\n';
+            node.childNodes.forEach(traverse);
+            if (['div', 'p', 'li'].includes(tag)) result += '\n';
+        }
+    }
+    traverse(fragment);
+    return result.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Get text nodes with offsets for precise cursor placement
+function getTextNodesWithOffsets(node) {
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, false);
+    let currentNode, nodes = [], offset = 0;
+
+    while (currentNode = walker.nextNode()) {
+        nodes.push({ node: currentNode, start: offset, end: offset + currentNode.length });
+        offset += currentNode.length;
+    }
+
+    return nodes;
+}
+
+
+function insertTextAtCursors(text) {
+    // Do this in reverse to avoid fragment shifting
+    for (let i = cursors.length - 1; i >= 0; i--) {
+        const { range, span } = cursors[i];
+
+        const textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+
+        // Move range after inserted text node
+        range.setStartAfter(textNode);
+        range.collapse(true);
+
+        // Move span after the inserted text node
+        if (textNode.parentNode) {
+            textNode.parentNode.insertBefore(span, textNode.nextSibling);
+        }
+    }
+}
+
+
+function insertCursorOnMouseDown(event) {
+    if (!cursorInsertMode) return;
+
+    // Prevent text selection
+    event.preventDefault();
+
+    const range = document.caretRangeFromPoint
+        ? document.caretRangeFromPoint(event.clientX, event.clientY)
+        : document.caretPositionFromPoint(event.clientX, event.clientY)?.getRange();
+
+    if (!range) {
+        console.warn("Could not determine click position");
+        return;
+    }
+
+    // Insert cursor at click point
+    const cursorSpan = document.createElement("span");
+    cursorSpan.className = "cursor";
+    range.insertNode(cursorSpan);
+
+    // Move range after cursor for future typing
+    range.setStartAfter(cursorSpan);
+    range.collapse(true);
+
+    // Add to global cursor list
+    cursors.push({ span: cursorSpan, range: range });
+
+    setStatus(`🖱️ Cursor added. Total: ${cursors.length}`);
+};
+
+function clearAllCursors() {
+    if (!savedEditorRange.collapsed) {
+        removeCursorsInSelection();
+        
+        return;
+    }
+    document.getElementById('editor').normalize();
+    document.querySelectorAll('.cursor').forEach(span => span.remove());
+    document.getElementById('editor').normalize();
+    cursors = [];
+    setStatus("❌ All cursors removed.");
+}
+function removeCursorsInSelection() {
+    
+    const selectionRange = savedEditorRange;
+    if (selectionRange.collapsed) {
+        setStatus("⚠️ No selection — nothing removed.");
+        return;
+    }
+
+    const editor = document.getElementById('editor');
+    const remainingCursors = [];
+
+    cursors.forEach(cursor => {
+        const { range } = cursor;
+
+        // Sanity check: cursor must be inside editor
+        if (!editor.contains(range.startContainer)) return;
+
+        // Check if cursor is inside or touches the selection
+        const compareStart = selectionRange.compareBoundaryPoints(Range.START_TO_START, range);
+        const compareEnd = selectionRange.compareBoundaryPoints(Range.END_TO_END, range);
+
+        // Keep the cursor only if it's *entirely outside* the selection range
+        const isBefore = compareEnd <= 0; // cursor is entirely before selection
+        const isAfter = compareStart >= 0; // cursor is entirely after selection
+        
+
+        if (isBefore || isAfter) {
+            remainingCursors.push(cursor); // keep this one
+        } else if (cursor.span != null) {
+            cursor.span.remove();
+            editor.normalize();
+        }
+    });
+
+    const removedCount = cursors.length - remainingCursors.length;
+    cursors = remainingCursors;
+    updateCursorVisualPositions();
+    setStatus(`🧹 Removed ${removedCount} cursor(s) inside selection.`);
+}
+
+
+
+function clearAllHighlight() {
+    const editor = document.getElementById('editor');
+    editor.normalize(); // clean up first
+
+    // Helper: unwrap spans
+    function unwrapAll(selector) {
+        document.querySelectorAll(selector).forEach(span => {
+            span.replaceWith(...span.childNodes);
+        });
+    }
+
+    // Remove .highlight and .highlight1 through .highlight7
+    unwrapAll('.highlight');
+    [1, 2, 3, 4, 5, 6, 7].forEach(x => unwrapAll('.highlight' + x));
+
+    editor.normalize(); // clean up again
+    setStatus("❌ All highlights removed.");
+}
+
+
+let cursorInsertMode = false;
+
+function toggleCursorInsertMode() {
+    if (savedEditorRange != null && !savedEditorRange.collapsed) {
+        cursorsAtStart();
+        return;
+    }
+    cursorInsertMode = !cursorInsertMode;
+    toggleMouseIconForCursorPlacementMode();
+    const btn = document.getElementById("toggleCursorModeBtn");
+    btn.style.backgroundColor = cursorInsertMode ? "#d3f" : "";
+    setStatus(cursorInsertMode ? "🖱️ Click to add cursors" : "🔚 Cursor mode off");
+}
+
+const toggleCursorModeButton = document.getElementById("toggleCursorModeBtn");
+
+
+// Right click: trigger alternate behavior (e.g., end-of-line)
+toggleCursorModeButton.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // prevent default context menu
+    cursorsAtEnd();
+});
+// Right click on the align button
+const alignButton = document.getElementById("alignWithCursorsBtn");
+alignButton.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // prevent default context menu
+    alignWithCursorsFromLeft();
+});
+
+function toggleMouseIconForCursorPlacementMode() {
+
+    if (cursorInsertMode) {
+        const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+  <rect x="7" y="2" width="2" height="12" fill="black"/>
+  <rect x="2" y="7" width="12" height="2" fill="black"/>
+</svg>`.trim();
+
+        const encoded = encodeURIComponent(svg)
+            .replace(/'/g, '%27')
+            .replace(/"/g, '%22');
+
+        const dataUrl = `url("data:image/svg+xml,${encoded}") 8 8, auto`;
+
+        document.body.style.cursor = dataUrl;
+    } else {
+        document.body.style.cursor = 'text'; // default for contenteditable
+    }
+}
+
+
+/// Moving cursors
+function moveCursors(direction) {
+    const editor = document.getElementById('editor');
+    const newCursors = [];
+
+    clearCursorSpans();
+
+    cursors.forEach(({ range }) => {
+        let container = range.startContainer;
+        let offset = range.startOffset;
+
+        // Collapse the range first
+        if (!range.collapsed) {
+            range.collapse(direction === 'left');
+            container = range.startContainer;
+            offset = range.startOffset;
+        }
+
+        // Ensure we are always in a text node
+        if (container.nodeType !== Node.TEXT_NODE) {
+            if (container.childNodes.length > 0 && container.childNodes[offset]) {
+                container = container.childNodes[offset];
+                offset = 0;
+            } else if (container.previousSibling && direction === 'left') {
+                container = container.previousSibling;
+                while (container && container.lastChild) container = container.lastChild;
+                offset = container.textContent.length;
+            } else if (container.nextSibling && direction === 'right') {
+                container = container.nextSibling;
+                while (container && container.firstChild) container = container.firstChild;
+                offset = 0;
+            } else {
+                return; // no valid adjacent node
+            }
+        }
+
+        if (!editor.contains(container)) return;
+
+        if (direction === 'left') {
+            if (offset > 0) {
+                offset--;
+            } else {
+                let prev = getPreviousTextNodeDeep(container);
+                if (prev) {
+                    container = prev;
+                    offset = prev.textContent.length - 1;
+                    offset = Math.max(offset, 0);
+                }
+            }
+        } else if (direction === 'right') {
+            if (offset < container.textContent.length) {
+                offset++;
+            } else {
+                let next = getNextTextNodeDeep(container);
+                if (next) {
+                    container = next;
+                    offset = 1;
+                }
+            }
+        }
+
+        // Ensure offset is in valid bounds
+        offset = Math.max(0, Math.min(offset, container.textContent.length));
+
+        const newRange = document.createRange();
+        newRange.setStart(container, offset);
+        newRange.collapse(true);
+        newCursors.push({ range: newRange, span: null });
+    });
+
+    cursors = newCursors;
+    updateCursorVisualPositions();
+}
+
+
+
+function alignWithCursors() {
+    const editor = document.getElementById('editor');
+    const newCursors = [];
+
+    clearCursorSpans();
+
+    const sorted = [...cursors].sort((a, b) =>
+        b.range.compareBoundaryPoints(Range.START_TO_START, a.range)
+    );
+
+    sorted.forEach(cursor => {
+        const range = cursor.range;
+
+        if (!range.collapsed) return;
+
+        let container = range.startContainer;
+        let offset = range.startOffset;
+
+        if (!editor.contains(container)) return;
+
+        if (container.nodeType === Node.ELEMENT_NODE) {
+            if (container.childNodes[offset]?.nodeType === Node.TEXT_NODE) {
+                container = container.childNodes[offset];
+                offset = 0;
+            } else {
+                return;
+            }
+        }
+
+        if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent;
+            if (offset < text.length) {
+                const charToDelete = text.at(offset);
+                if (charToDelete != ' ' && charToDelete != '\t') {
+                
+                    const fallback = document.createRange();
+                    fallback.setStart(container, offset);
+                    fallback.collapse(true);
+                    newCursors.push({ range: fallback, span: null });
+                    return;
+                }
+                container.textContent = text.slice(0, offset) + text.slice(offset + 1);
+                
+                const newRange = document.createRange();
+                newRange.setStart(container, offset);
+                newRange.collapse(true);
+                newCursors.push({ range: newRange, span: null });
+                return;
+            }
+        }
+
+        // Fallback: move to next available visible text node
+        let next = getNextTextNodeDeep(container);
+        if (next && next.textContent.length > 0) {
+            const charToDelete = next.textContent.at(0);
+            if (charToDelete != ' ' && charToDelete != '\t') {
+            
+                const fallback = document.createRange();
+                fallback.setStart(container, offset);
+                fallback.collapse(true);
+                newCursors.push({ range: fallback, span: null });
+                return;
+            }
+            next.textContent = next.textContent.slice(1);
+            const newRange = document.createRange();
+            newRange.setStart(next, 0);
+            newRange.collapse(true);
+            newCursors.push({ range: newRange , span: null });
+            return;
+        }
+
+        // Nothing found — keep the same cursor
+        const fallback = document.createRange();
+        fallback.setStart(container, offset);
+        fallback.collapse(true);
+        newCursors.push({ range: fallback, span: null });
+    });
+
+    cursors = newCursors;
+    updateCursorVisualPositions();
+}
+
+function alignWithCursorsFromLeft() {
+    const editor = document.getElementById('editor');
+    const newCursors = [];
+
+    clearCursorSpans();
+
+    const sorted = [...cursors].sort((a, b) =>
+        b.range.compareBoundaryPoints(Range.START_TO_START, a.range)
+    );
+
+    sorted.forEach(cursor => {
+        const range = cursor.range;
+
+        if (!range.collapsed) return;
+
+        let container = range.startContainer;
+        let offset = range.startOffset;
+
+        if (!editor.contains(container)) return;
+
+        // Dive into child text node if needed
+        if (container.nodeType === Node.ELEMENT_NODE) {
+            if (container.childNodes[offset - 1]?.nodeType === Node.TEXT_NODE) {
+                container = container.childNodes[offset - 1];
+                offset = container.textContent.length;
+            } else {
+                return;
+            }
+        }
+
+        // Case 1: Backspace within the same node
+        if (container.nodeType === Node.TEXT_NODE && offset > 0) {
+            const text = container.textContent;
+            const charToDelete = text.at(offset-1);
+            if (charToDelete != ' ' && charToDelete != '\t') {
+            
+                const fallback = document.createRange();
+                fallback.setStart(range.startContainer, range.startOffset);
+                fallback.collapse(true);
+                newCursors.push({ range: fallback, span: null });
+                return;
+            }
+            container.textContent = text.slice(0, offset - 1) + text.slice(offset);
+
+            const newRange = document.createRange();
+            newRange.setStart(container, offset - 1);
+            newRange.collapse(true);
+            newCursors.push({ range: newRange, span: null });
+            return;
+        }
+
+        // Case 2: Backspace at offset 0 — go to previous node
+        const prev = getPreviousTextNodeDeep(container);
+        if (prev && prev.textContent.length > 0) {
+            const text = prev.textContent;
+            const charToDelete = text.at(-1);
+            if (charToDelete != ' ' && charToDelete != '\t') {
+            
+                const fallback = document.createRange();
+                fallback.setStart(range.startContainer, range.startOffset);
+                fallback.collapse(true);
+                newCursors.push({ range: fallback, span: null });
+                return;
+            }
+            const newText = text.slice(0, -1);
+            prev.textContent = newText;
+
+            const newRange = document.createRange();
+            newRange.setStart(prev, newText.length);
+            newRange.collapse(true);
+            newCursors.push({ range: newRange, span: null  });
+            return;
+        }
+
+        // Case 3: Nothing to delete — retain cursor
+        const fallback = document.createRange();
+        fallback.setStart(container, offset);
+        fallback.collapse(true);
+        newCursors.push({ range: fallback, span: null  });
+    });
+
+    cursors = newCursors;
+    updateCursorVisualPositions();
+ 
+}
+
+async function dd(n = 1) {
+    
+
+    const editor = document.getElementById("editor");
+    const cursorRange = savedEditorRange.cloneRange();
+    if (!cursorRange.collapsed) {
+        setStatus("⚠️ No single cursor to delete from.");
+        return;
+    }
+    const cursorRect = cursorRange.getClientRects()[0];
+    if (!cursorRect) return;
+
+    const lineMap = new Map(); // top → [textNodes]
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (!node.textContent.trim()) continue;
+
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rects = range.getClientRects();
+
+        for (const rect of rects) {
+            const top = Math.round(rect.top);
+            if (!lineMap.has(top)) {
+                lineMap.set(top, []);
+            }
+            lineMap.get(top).push(node);
+        }
+    }
+
+    // Sort the line tops visually and pick the N lines starting at the cursor
+    const sortedTops = Array.from(lineMap.keys()).sort((a, b) => a - b);
+    const cursorTop = Math.round(cursorRect.top);
+    const linesToDelete = [];
+
+    let started = false;
+    for (const top of sortedTops) {
+        if (!started && top >= cursorTop) started = true;
+        if (started) {
+            linesToDelete.push(...lineMap.get(top));
+            if (--n === 0) break;
+        }
+    }
+
+    if (!linesToDelete.length) {
+        setStatus("⚠️ No lines to delete.");
+        return;
+    }
+
+    // Build range
+    const range = document.createRange();
+    range.setStartBefore(linesToDelete[0]);
+    range.setEndAfter(linesToDelete[linesToDelete.length - 1]);
+
+    // Copy to clipboard
+    const div = document.createElement("div");
+    div.appendChild(range.cloneContents());
+    div.querySelectorAll('.note-button').forEach(btn => {
+        // Serialize data-message as an attribute (won't be stripped if included cleanly)
+        btn.setAttribute('data-message', btn.dataset.message);
+    });
+    
+    // Process anchor tags with onclick
+    div.querySelectorAll('a[onclick]').forEach(anchor => {
+        const onclick = anchor.getAttribute('onclick');
+        const match = onclick?.match(/selectText\(['"](.+?)['"]\)/);
+        if (match) {
+            anchor.setAttribute('data-select-id', match[1]);
+        }
+        anchor.removeAttribute('onclick'); // remove the JS inline
+    });
+    const html = div.innerHTML;
+    const text = range.toString();
+
+    try {
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                "text/plain": new Blob([text], { type: "text/plain" }),
+                "text/html": new Blob([html], { type: "text/html" })
+            })
+        ]);
+    } catch (err) {
+        setStatus("❌ Failed to copy before deletion");
+        return;
+    }
+
+    // Delete from DOM
+    range.deleteContents();
+    setStatus(`🗑️ Deleted and yanked!`);
+}
+
+
+async function yy(n = 1) {
+
+
+    const editor = document.getElementById("editor");
+    const cursorRange = savedEditorRange.cloneRange();
+    if (!cursorRange.collapsed) {
+        setStatus("⚠️ No single cursor to yank from.");
+        return;
+    }
+    const cursorRect = cursorRange.getClientRects()[0];
+    if (!cursorRect) return;
+
+    const lineMap = new Map(); // top → [textNodes]
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (!node.textContent.trim()) continue;
+
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rects = range.getClientRects();
+
+        for (const rect of rects) {
+            const top = Math.round(rect.top);
+            if (!lineMap.has(top)) {
+                lineMap.set(top, []);
+            }
+            lineMap.get(top).push(node);
+        }
+    }
+
+    // Sort visual lines
+    const sortedTops = Array.from(lineMap.keys()).sort((a, b) => a - b);
+    const cursorTop = Math.round(cursorRect.top);
+    const linesToCopy = [];
+
+    let started = false;
+    for (const top of sortedTops) {
+        if (!started && top >= cursorTop) started = true;
+        if (started) {
+            linesToCopy.push(...lineMap.get(top));
+            if (--n === 0) break;
+        }
+    }
+
+    if (!linesToCopy.length) {
+        setStatus("⚠️ No lines to yank.");
+        return;
+    }
+
+    // Create range over selected lines
+    const range = document.createRange();
+    range.setStartBefore(linesToCopy[0]);
+    range.setEndAfter(linesToCopy[linesToCopy.length - 1]);
+
+    // Extract contents to clipboard
+    const div = document.createElement("div");
+    div.appendChild(range.cloneContents());
+    // Optional: Clean up & preserve note buttons
+    div.querySelectorAll('.note-button').forEach(btn => {
+        // Serialize data-message as an attribute (won't be stripped if included cleanly)
+        btn.setAttribute('data-message', btn.dataset.message);
+    });
+    
+    // Process anchor tags with onclick
+    div.querySelectorAll('a[onclick]').forEach(anchor => {
+        const onclick = anchor.getAttribute('onclick');
+        const match = onclick?.match(/selectText\(['"](.+?)['"]\)/);
+        if (match) {
+            anchor.setAttribute('data-select-id', match[1]);
+        }
+        anchor.removeAttribute('onclick'); // remove the JS inline
+    });
+    const html = div.innerHTML;
+    const text = range.toString();
+
+    try {
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                "text/plain": new Blob([text], { type: "text/plain" }),
+                "text/html": new Blob([html], { type: "text/html" })
+            })
+        ]);
+        setStatus(`📋 Yanked!`);
+    } catch (err) {
+        setStatus("❌ Failed to copy to clipboard");
+    }
+}
+
+
+function closeSearchResultPopup() {
+    [1,2,3,4,5,6,7].forEach(x => document.getElementById('searchResults'+x).style.display='none');
+    showTools();
+}
+
+function generateGUID() {
+    return 'xxxxxxxxxx'.replace(/[x]/g, () =>
+        Math.floor(Math.random() * 16).toString(16)
+    );
+}
+
+function makeDraggable(popupId, handleId) {
+    const popup = document.getElementById(popupId);
+    const handle = document.getElementById(handleId);
+
+    let offsetX = 0, offsetY = 0, startX = 0, startY = 0;
+
+    handle.onmousedown = dragMouseDown;
+
+    function dragMouseDown(e) {
+        e.preventDefault();
+        startX = e.clientX;
+        startY = e.clientY;
+
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        offsetX = e.clientX - startX;
+        offsetY = e.clientY - startY;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const rect = popup.getBoundingClientRect();
+        popup.style.top = rect.top + offsetY + "px";
+        popup.style.left = rect.left + offsetX + "px";
+        popup.style.transform = ""; // disable center transform while dragging
+    }
+
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+}
+
+function getTextFromLastNewlineToRangeStart(range) {
+    const editor = document.getElementById("editor");
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ALL, null, false);
+
+    const startNode = range.startContainer;
+    const startOffset = range.startOffset;
+    const textChunks = [];
+
+    let foundStart = false;
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+
+        if (node === startNode) {
+            foundStart = true;
+            if (node.nodeType === Node.TEXT_NODE) {
+                textChunks.push(node.textContent.slice(0, startOffset));
+            }
+            break;
+        }
+
+        if (!foundStart) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                textChunks.push(node.textContent);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const tag = node.nodeName.toLowerCase();
+                if (tag === 'br' || tag === 'p' || tag === 'div' || tag.match(/^h[1-6]$/)) {
+                    textChunks.push('\n');
+                }
+            }
+        }
+    }
+
+    const fullText = textChunks.join("");
+    const lastNewline = fullText.lastIndexOf("\n");
+
+    return lastNewline !== -1 ? fullText.slice(lastNewline + 1) : fullText;
+}
+
+
+function getTextFromRangeEndToNextNewline(range) {
+    const editor = document.getElementById("editor");
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_ALL, null, false);
+
+    const endNode = range.endContainer;
+    const endOffset = range.endOffset;
+    const textChunks = [];
+
+    let foundStart = false;
+    let done = false;
+
+    while (walker.nextNode() && !done) {
+        const node = walker.currentNode;
+
+        if (!foundStart) {
+            if (node === endNode) {
+                foundStart = true;
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const slice = node.textContent.slice(endOffset);
+                    textChunks.push(slice);
+                    if (slice.includes("\n")) done = true;
+                }
+            }
+        } else {
+            if (node.nodeType === Node.TEXT_NODE) {
+                textChunks.push(node.textContent);
+                if (node.textContent.includes("\n")) {
+                    done = true;
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const tag = node.nodeName.toLowerCase();
+                if (tag === 'br' || tag === 'p' || tag === 'div' || tag.match(/^h[1-6]$/)) {
+                    textChunks.push('\n');
+                    done = true; // stop at the first visual line break
+                }
+            }
+        }
+    }
+
+    const fullText = textChunks.join("");
+    const newlineIndex = fullText.indexOf("\n");
+
+    return newlineIndex !== -1 ? fullText.slice(0, newlineIndex) : fullText;
+}
+
+
+
+</script>
+<div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4 id="popupTextAreaHeading">Text Input:</h4>
+  <textarea id="popupTextarea" rows="12" cols="80" style="width:100%;"></textarea><br><br>
+  <button onclick="submitTextPopup()">OK</button>
+  <button onclick="closeTextPopup()">Cancel</button>
+</div>
+
+<div id="searchResults1"  style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4  id="searchResults1Header" style="cursor:move;">                        Search Results 1:                            </h4>
+  <div id="searchResults1listing"  class="searchResultsListing"></div>
+  <button onclick="closeSearchResultPopup()">Close</button>
+</div>
+<div id="searchResults2" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4  id="searchResults2Header" style="cursor:move;">                        Search Results 2:                            </h4>
+  <div id="searchResults2listing"  class="searchResultsListing"></div>
+  <button onclick="closeSearchResultPopup()">Close</button>
+</div>
+<div id="searchResults3" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4  id="searchResults3Hader" style="cursor:move;">                        Search Results 3:                            </h4>
+  <div id="searchResults3listing"  class="searchResultsListing"></div>
+  <button onclick="closeSearchResultPopup()">Close</button>
+</div>
+<div id="searchResults4" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4  id="searchResults4Header" style="cursor:move;">                        Search Results 4:                            </h4>
+  <div id="searchResults4listing"  class="searchResultsListing"></div>
+  <button onclick="closeSearchResultPopup()">Close</button>
+</div>
+<div id="searchResults5" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4 id="searchResults5Header" style="cursor:move;">                        Search Results 5:                            </h4>
+  <div id="searchResults5listing"  class="searchResultsListing"></div>
+  <button onclick="closeSearchResultPopup()">Close</button>
+</div>
+<div id="searchResults6" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4 id="searchResults6Header" style="cursor:move;">                        Search Results 6:                            </h4>
+  <div id="searchResults6listing"  class="searchResultsListing"></div>
+  <button onclick="closeSearchResultPopup()">Close</button>
+</div>
+<div id="searchResults7"  style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+  <h4 id="searchResults7Header" style="cursor:move;">                        Search Results 7:                            </h4>
+  <div id="searchResults7listing" class="searchResultsListing"></div>
+  <button onclick="closeSearchResultPopup()">Close</button>
+</div>
+
+
+<div id="stopRecordingPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
+<button onclick="stopRecording()" id="stopBtn">⏹️ Stop</button>
+</div>
+
+<div id="jsEvalPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+     background:#fff; border:1px solid #ccc; padding:10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:10000;">
+  <input id="jsEvalInput" type="text" placeholder="Enter JS code..." style="width: 300px;" />
+</div>
+
+<div id="scaleImagePopup" style="display:none; position:fixed; top:25%; left:50%; transform:translateX(-50%);
+     background:white; padding:15px; border:1px solid #ccc; box-shadow:0 4px 8px rgba(0,0,0,0.2); z-index:10000;">
+  <label for="scaleImageInput">Scale images (%):</label>
+  <input id="scaleImageInput" type="text" onkeydown="scaleImagePressEnter(event)" placeholder="e.g. 50" style="width: 60px; margin-left: 10px;">
+  <button onclick="submitImageScaling()">OK</button>
+  <button onclick="closeScaleImagePopup()">Cancel</button>
+</div>
+<div id="helpPopup" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+     background:white; color:black; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:10000;
+     max-width: 600px; max-height: 80%; overflow-y: auto; font-family: monospace; font-size: 14px;">
+  <h3> Spectral Text Help</h3>
+  <pre>Keyboard Shortcuts:
+  Ctrl+c         Copy
+  Ctrl+x         Cut
+  Ctrl+v         Paste
+  Ctrl+s         Save file
+  Ctrl+i         Insert HTML (e.g. for video embedding)
+  Ctrl+m         Insert note
+  Ctrl+l         Insert audio recording
+  Ctrl+q or Esc  Javascript command evaluator popup
+  Ctrl+b         Toggle toolbar visibility
+  Ctrl+h         Show this help
+  Ctrl+[1-7]     Send selected text to the n-th search box
+  Ctrl+Alt+m     Match brackets (+ braces and parenthesis)
+  Ctrl+Alt+p     Scale selected or nearby picture(s)
+  Ctrl+Alt-s     Save state
+  Ctrl+Alt+z     Undo to the last saved state
+  Ctrl+Alt+y     Redo undone state reversal 
+  Ctrl+Alt+c     Clear temporary highlighting
+  Tab            Indent selection
+  Shift+Tab      Unindent selection 
+Text Commands (Can be used with Javascript Eval):
+  wc           → Word count of selection
+  reflow(n)    → Reflow selected text to n-character lines
+  camel        → Convert identifier to camelCase
+  snake        → Convert identifier to snake_case
+  kebab        → Convert identifier to kebab-case
+  uc           → Convert to upper case
+  lc           → Convert to lowercase
+  title        → Convert to Title Case
+  darken       → Switch to dark mode
+</pre>
+  <button onclick="closeHelp()">Close</button>
+</div>
+
+
+<div id="awsConfigPopup" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+    background:white; color:black; padding:20px; border:1px solid #ccc; box-shadow:0 4px 8px rgba(0,0,0,0.2);
+    z-index:10000; font-family:sans-serif; font-size:14px; width:300px;">
+  <h3>AWS S3 Configuration</h3>
+  <label>Access Key:</label><br>
+  <input type="text" id="awsAccessKey" style="width:100%"><br><br>
+  
+  <label>Secret Access Key:</label><br>
+  <input type="password" id="awsSecretKey" style="width:100%"><br><br>
+  
+  <label>Region:</label><br>
+  <input type="text" id="awsRegion" placeholder="e.g. us-east-1" style="width:100%"><br><br>
+  
+  <label>Bucket Name:</label><br>
+  <input type="text" id="awsBucket" style="width:100%"><br><br>
+
+  <label>Folder Name (prefix):</label><br>
+  <input type="text" id="awsFolder" placeholder="e.g. editor-saves/" style="width:100%"><br><br>
+
+  <button onclick="saveAWSConfig()">OK</button>
+  <button onclick="document.getElementById('awsConfigPopup').style.display='none'">Cancel</button>
+</div>
+
+<div id="findReplaceDialog" style="display: none; position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+    background: white; border: 1px solid #ccc; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    padding: 20px; z-index: 10000; width: 320px; font-family: sans-serif; font-size: 14px;">
+    <h3>🔍 Find & Replace</h3>
+    <label>Find (pattern):</label><br>
+    <input type="text" id="findPattern" style="width: 100%;" /><br><br>
+
+    <label>Replace with:</label><br>
+    <input type="text" id="replaceText" style="width: 100%;" /><br><br>
+
+    <label><input type="checkbox" id="useRegex" checked /> Use Regular Expression</label><br>
+    <label><input type="checkbox" id="caseSensitive" checked /> Case Sensitive</label><br><br>
+    <label><input type="checkbox" id="cursorOnlyMode"  /> Place cursors only</label><br><br>
+   
+
+    <button onclick="runFindReplace()">Replace All</button>
+    <button onclick="hideFindReplaceDialog()">Cancel</button>
+</div>
+
+<button id="stopSpeakingBtn" onclick="stopSpeaking()" 
+    style="display:none; position:fixed; bottom:20px; right:20px;
+    background:#d33; color:white; border:none; border-radius:6px;
+    padding:10px; font-size:14px; z-index:9999;">
+    ⏹️ Stop Speaking
+</button>
+
+</body>
+</html>
+
+
