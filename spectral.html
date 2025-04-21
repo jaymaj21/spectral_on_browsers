@@ -2392,6 +2392,26 @@ function showJsEvalPopup() {
 
     input.onkeydown = function(event) {
        
+        if (event.key === 'y')  {
+            var toEval = input.value.trim()
+            if (/^[0-9]*y$/.test(toEval)) {
+                toEval = 'yy(' + toEval.slice(0,-1) + ')';
+                const result = eval(toEval);
+                input.value = "";
+                 popup.style.display = 'none';
+                return;
+            }
+        } else if(event.key == 'd')  { 
+            var toEval = input.value.trim(); 
+            if (/^[0-9]*d$/.test(toEval)) {
+                toEval = 'dd(' + toEval.slice(0,-1) + ')';
+                const result = eval(toEval);
+                input.value = "";
+                popup.style.display = 'none';
+                return;
+            }
+            
+        }
         if (event.key === 'Enter') {
               event.preventDefault();
             const code = input.value.trim();
@@ -2401,14 +2421,7 @@ function showJsEvalPopup() {
             }
 
             let toEval = code;
-            
-            if (/^[0-9]+yy/.test(toEval)) {
-                toEval = 'yy(' + toEval.slice(0,-2) + ')';
-            }
-            
-            if (/^[0-9]+dd/.test(toEval)) {
-                toEval = 'dd(' + toEval.slice(0,-2) + ')';
-            }
+          
             
             if (!/[()]/.test(toEval) && /^[a-zA-Z_$][\w$]*$/.test(toEval)) {
                 toEval += '()';
