@@ -3236,6 +3236,7 @@ function tidyUp() {
     removeListFormattingNewlines();
     removeEmptyLinesFromEditor();
     flattenParagraphsInEditor();
+    removeAllButtonsFromEditor();
 }
 
 
@@ -4228,6 +4229,15 @@ function getTextFromRangeEndToNextNewline(range) {
     return newlineIndex !== -1 ? fullText.slice(0, newlineIndex) : fullText;
 }
 
+function removeAllButtonsFromEditor() {
+    const editor = document.getElementById("editor");
+    if (!editor) return;
+
+    const buttons = editor.querySelectorAll("button");
+    buttons.forEach(button => button.remove());
+
+    setStatus(`🧹 Removed ${buttons.length} button(s) from the editor.`);
+}
 
 
 </script>
