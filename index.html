@@ -1811,13 +1811,16 @@ document.addEventListener('keydown', function(event) {
         }  if(event.key.toLowerCase() === 'c') {
            event.preventDefault();
            clearAllHighlight();
-        } if (event.key.toLowerCase() === 'r') {
+        } else if (event.key.toLowerCase() === 'r') {
             event.preventDefault();
             speakSelection();
-        } if (event.key.toLowerCase() === 'v') {
+        } else if (event.key === 'V') {
             event.preventDefault();
              pasteSegmentsAcrossLines();
-        } 
+        } else if (event.key === 'v') {
+            event.preventDefault();
+            pasteSegmentsAtLineStarts();
+        }
             
         
     } else if (cursors.length == 0 && event.key === 'Enter' && event.target.id === 'editor') {
@@ -4373,6 +4376,128 @@ async function pasteSegmentsAcrossLines() {
     }
 }
 
+async function pasteSegmentsAtLineStarts() {
+    const editor = document.getElementById('editor');
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        setStatus("No selection found.");
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) {
+        setStatus("Cursor is not inside the editor.");
+        return;
+    }
+
+    try {
+        const clipboard = await navigator.clipboard.read();
+        let htmlContent = "", plainText = "";
+
+        for (const item of clipboard) {
+            if (item.types.includes("text/html")) {
+                const blob = await item.getType("text/html");
+                htmlContent = await blob.text();
+                break;
+            }
+        }
+
+        if (!htmlContent) {
+            // Fallback to plain text
+            plainText = await navigator.clipboard.readText();
+        }
+
+        const content = htmlContent || plainText;
+        const segments = content
+            .split(/\r?\n|\r|<br\s*\/?>|<\/p>|<\/div>/i)
+            .map(s => s.replace(/<[^>]+>/g, '').trim()) // remove HTML tags if any
+            .filter(s => s.length > 0);
+
+        if (segments.length === 0) {
+            setStatus("Clipboard content is empty after splitting.");
+            return;
+        }
+
+        // Flatten all visible text nodes in editor
+        const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (node.textContent.trim() !== '') {
+                textNodes.push(node);
+            }
+        }
+
+        // Find cursor offset into flattened text
+        let cursorOffset = 0, total = 0, found = false;
+        for (const node of textNodes) {
+            if (node === range.startContainer) {
+                cursorOffset = total + range.startOffset;
+                found = true;
+                break;
+            }
+            total += node.textContent.length;
+        }
+
+        if (!found) {
+            setStatus("Couldn't locate cursor in text flow.");
+            return;
+        }
+
+        // Map offsets to line positions (based on rendered lines)
+        const lines = [];
+        let currentLineTop = null;
+        let currentLine = [];
+
+        for (const node of textNodes) {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const rects = Array.from(range.getClientRects());
+
+            for (const rect of rects) {
+                if (currentLineTop === null || Math.abs(rect.top - currentLineTop) > 2) {
+                    if (currentLine.length > 0) lines.push(currentLine);
+                    currentLine = [];
+                    currentLineTop = rect.top;
+                }
+                currentLine.push({ node, offset: node.textContent.length });
+            }
+        }
+        if (currentLine.length > 0) lines.push(currentLine);
+
+        // Find which line the cursor is on
+        let lineIndex = -1;
+        total = 0;
+        for (let i = 0; i < lines.length; ++i) {
+            const sum = lines[i].reduce((acc, part) => acc + part.offset, 0);
+            if (cursorOffset <= total + sum) {
+                lineIndex = i;
+                break;
+            }
+            total += sum;
+        }
+
+        if (lineIndex === -1) {
+            setStatus("Couldn't locate cursor line.");
+            return;
+        }
+
+        // Prepend each segment at the beginning of successive lines
+        for (let i = 0; i < segments.length; ++i) {
+            const targetLine = lines[lineIndex + i];
+            if (!targetLine) break;
+            const firstPart = targetLine[0];
+            const textNode = firstPart.node;
+            textNode.textContent = segments[i] + ' ' + textNode.textContent;
+        }
+
+        setStatus(`Prepended ${segments.length} segment(s) at line starts.`);
+    } catch (err) {
+        console.error(err);
+        setStatus("Error accessing clipboard.");
+    }
+}
+
 
 </script>
 <div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
@@ -4465,7 +4590,7 @@ async function pasteSegmentsAcrossLines() {
   Ctrl+Alt+z     Undo to the last saved state
   Ctrl+Alt+y     Redo undone state reversal 
   Ctrl+Alt+c     Clear temporary highlighting
-  Ctrl+Alt+v     Paste accross lines at ends
+  Ctrl+Alt+v/V   Paste accross lines at starts(v)/ends(V)
   Tab            Indent selection
   Shift+Tab      Unindent selection 
 Text Commands (Can be used with Javascript Eval):
