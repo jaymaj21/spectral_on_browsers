@@ -251,15 +251,13 @@
           Wrap lines
         </label>
         <label>
-          <input type="checkbox" id="caseInsensitive" checked>
-          Case-insensitive
-        </label>
+          <input type="checkbox" id="caseInsensitive" checked>Ignore Case</label>
     <button onclick="showFindReplaceDialog()" title="Find and replace">🔍 Find & Replace</button>
     <button onclick="speakSelection()" title="Read aloud the selected text">🗣 Speak Selection</button>
     <button id="toggleCursorModeBtn" onclick="toggleCursorInsertMode()" title="Add cursors to selection or interactively add cursors">🖱 Add n-Cursors</button>
     <button onclick="clearAllCursors()" title="Clear all cursors">❌ Clear n-Cursors</button>
     <button onclick="alignWithCursors()" id="alignWithCursorsBtn" style="font-size: 0.8em; padding: 2px 6px;">Align /w Cursors ⬅️</button>
-   
+   <button onclick="sanitizeHtml()" title="Sanitize">🧼</button>
         <button onclick="help()" title="Help screen">❓ Help</button>
         
     </div>
@@ -1816,6 +1814,9 @@ document.addEventListener('keydown', function(event) {
         } if (event.key.toLowerCase() === 'r') {
             event.preventDefault();
             speakSelection();
+        } if (event.key.toLowerCase() === 'v') {
+            event.preventDefault();
+             pasteSegmentsAcrossLines();
         } 
             
         
@@ -4239,6 +4240,139 @@ function removeAllButtonsFromEditor() {
     setStatus(`🧹 Removed ${buttons.length} button(s) from the editor.`);
 }
 
+function sanitizeHtml() {
+    const editor = document.getElementById('editor');
+
+    const processed = postProcessForEmail(editor.innerHTML);
+
+    // Replace the content in the editor
+    editor.innerHTML = processed;
+
+    setStatus("Editor content sanitized");
+}
+
+async function pasteSegmentsAcrossLines() {
+    const editor = document.getElementById('editor');
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        setStatus("No selection found.");
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) {
+        setStatus("Cursor is not inside the editor.");
+        return;
+    }
+
+    try {
+        const clipboard = await navigator.clipboard.read();
+        let htmlContent = "", plainText = "";
+
+        for (const item of clipboard) {
+            if (item.types.includes("text/html")) {
+                const blob = await item.getType("text/html");
+                htmlContent = await blob.text();
+                break;
+            }
+        }
+
+        if (!htmlContent) {
+            // Fallback to plain text
+            plainText = await navigator.clipboard.readText();
+        }
+
+        const content = htmlContent || plainText;
+        const segments = content
+            .split(/\r?\n|\r|<br\s*\/?>|<\/p>|<\/div>/i)
+            .map(s => s.replace(/<[^>]+>/g, '').trim()) // remove HTML tags if any
+            .filter(s => s.length > 0);
+
+        if (segments.length === 0) {
+            setStatus("Clipboard content is empty after splitting.");
+            return;
+        }
+
+        // Flatten all visible text nodes in editor
+        const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (node.textContent.trim() !== '') {
+                textNodes.push(node);
+            }
+        }
+
+        // Find cursor offset into flattened text
+        let cursorOffset = 0, total = 0, found = false;
+        for (const node of textNodes) {
+            if (node === range.startContainer) {
+                cursorOffset = total + range.startOffset;
+                found = true;
+                break;
+            }
+            total += node.textContent.length;
+        }
+
+        if (!found) {
+            setStatus("Couldn't locate cursor in text flow.");
+            return;
+        }
+
+        // Map offsets to line positions (based on rendered lines)
+        const lines = [];
+        let currentLineTop = null;
+        let currentLine = [];
+
+        for (const node of textNodes) {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const rects = Array.from(range.getClientRects());
+
+            for (const rect of rects) {
+                if (currentLineTop === null || Math.abs(rect.top - currentLineTop) > 2) {
+                    if (currentLine.length > 0) lines.push(currentLine);
+                    currentLine = [];
+                    currentLineTop = rect.top;
+                }
+                currentLine.push({ node, offset: node.textContent.length });
+            }
+        }
+        if (currentLine.length > 0) lines.push(currentLine);
+
+        // Find which line the cursor is on
+        let lineIndex = -1;
+        total = 0;
+        for (let i = 0; i < lines.length; ++i) {
+            const sum = lines[i].reduce((acc, part) => acc + part.offset, 0);
+            if (cursorOffset <= total + sum) {
+                lineIndex = i;
+                break;
+            }
+            total += sum;
+        }
+
+        if (lineIndex === -1) {
+            setStatus("Couldn't locate cursor line.");
+            return;
+        }
+
+        // Append each segment at the end of successive lines
+        for (let i = 0; i < segments.length; ++i) {
+            const targetLine = lines[lineIndex + i];
+            if (!targetLine) break;
+            const lastPart = targetLine[targetLine.length - 1];
+            const textNode = lastPart.node;
+            textNode.textContent += ' ' + segments[i];
+        }
+
+        setStatus(`Pasted ${segments.length} segment(s) line-wise.`);
+    } catch (err) {
+        console.error(err);
+        setStatus("Error accessing clipboard.");
+    }
+}
+
 
 </script>
 <div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
@@ -4313,8 +4447,7 @@ function removeAllButtonsFromEditor() {
 <div id="helpPopup" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
      background:white; color:black; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:10000;
      max-width: 600px; max-height: 80%; overflow-y: auto; font-family: monospace; font-size: 14px;">
-  <h3> Spectral Text Help</h3>
-  <pre>Keyboard Shortcuts:
+  <h4> Spectral Keystroke Commands </h4><pre>
   Ctrl+c         Copy
   Ctrl+x         Cut
   Ctrl+v         Paste
@@ -4332,6 +4465,7 @@ function removeAllButtonsFromEditor() {
   Ctrl+Alt+z     Undo to the last saved state
   Ctrl+Alt+y     Redo undone state reversal 
   Ctrl+Alt+c     Clear temporary highlighting
+  Ctrl+Alt+v     Paste accross lines at ends
   Tab            Indent selection
   Shift+Tab      Unindent selection 
 Text Commands (Can be used with Javascript Eval):
