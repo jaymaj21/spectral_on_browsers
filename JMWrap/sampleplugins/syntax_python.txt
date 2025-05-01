@@ -1,0 +1,24 @@
+
+
+userproc syntaxPython {} {
+    set widget .t;
+    set keywords { and    as    assert    break    class    continue    def    del    elif    else    except    exec    finally    for    from    global    if    import    in    is    lambda    not    or    pass    print    raise    return    try    while    with    yield }
+
+    $widget tag configure attention -background #5555ce
+    ::ctext::enableComments $widget
+    ctext::addHighlightClassForRegexp $widget numbers #3aa905  {[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?}
+    ctext::addHighlightClass $widget keyword red $keywords 
+    ctext::addHighlightClassForSpecialChars $widget brackets #2b7d35 {[]{}()<>=+-*;^%$!}
+    ctext::addHighlightClassForRegexp $widget strings blue {"([^"\\]*(\\.[^"\\]*)*)"|\'([^\'\\]*(\\.[^\'\\]*)*)\'}; 
+    ctext::addHighlightClassForRegexp $widget singleLineComment #44616a {//.*$};
+    ctext::addHighlightClassForRegexp $widget comment #44616a {;[:blank]*#.*$}
+    ctext::addHighlightClassForRegexp $widget comment #44616a {^[:blank]*#.*$}
+    ::ctext::comments $widget 
+
+    .t highlight 1.0 end;
+    update;
+}
+
+
+[getmenu].syntax add command -label "Python" -command "syntaxPython";
+

@@ -1,0 +1,14 @@
+#load_plugin your_plugin1.tcl
+load_plugin sampleplugins/syntax_html.tcl
+load_plugin sampleplugins/syntax_cpp.tcl
+load_plugin sampleplugins/syntax_cs.tcl
+load_plugin sampleplugins/syntax_cl.tcl
+load_plugin sampleplugins/syntax_tcl.tcl
+load_plugin sampleplugins/syntax_tex.tcl
+load_plugin sampleplugins/syntax_python.tcl
+load_plugin sampleplugins/syntax_php.tcl
+load_plugin sampleplugins/syntax_sql.tcl
+load_plugin sampleplugins/syntax_R.tcl
+load_plugin sampleplugins/syntax_verilog.tcl
+load_plugin sampleplugins/syntax_matlab.tcl
+

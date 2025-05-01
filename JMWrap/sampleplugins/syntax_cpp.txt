@@ -1,0 +1,30 @@
+userproc syntaxCPP {widget} {
+    
+    syntaxBegin $widget;
+    set keywords {typedef typename  inline do nullptr delete new enum const  
+                  while for bool true false double long short unsigned float 
+                  private public protected static void int char if return else 
+                  class struct case switch else int char if return else template 
+                    default default virtual extern using volatile override
+                    explicit namespace try catch continue break include this operator
+                    auto
+                }
+    
+    setAutoComplete $keywords; 
+    syntaxColorForWords $widget keywords red $keywords
+    syntaxColorForRegex $widget  {
+         numbers             #3aa905      {[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?}
+         strings             blue         {"([^"\\]*(\\.[^"\\]*)*)"|\'([^\'\\]*(\\.[^\'\\]*)*)\'} 
+         singleLineComment   #44616a      {//.*$}
+         preproc             #44616a      {^[:blank]*#.*((\\\n.*)?)*}
+                  
+    }
+     
+    
+    syntaxColorForChars $widget operators #2b7d35 {[]{}()<>=+-*;^%$!:.&}
+    syntaxEnd $widget;
+     
+}
+
+[getmenu].syntax add command -label "C++" -command "syntaxCPP [editor]";
+

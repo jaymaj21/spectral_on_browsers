@@ -1,0 +1,45 @@
+
+
+userproc syntaxTCL {widget} {
+    
+    syntaxBegin $widget;
+    set keywords {if open close puts incr bind array pack button label list frame 
+        text entry else break continue elseif proc set for foreach update configure 
+        while regexp regsub return catch global string source lappend lsearch lindex 
+        registry insert append length interp checkbox checkbutton radiobutton tag expr 
+        panedwindow menubutton tell socket subst eof pwd bindtags glob listbox pid exec 
+        auto_load_index time clipboard unknown eval lassign lrange tk_popup fblocked 
+        auto_import gets canvas case throw message place variable llength auto_execok pkg_mkIndex
+        linsert event error labelframe tkwait raise clock info split tk_textCut auto_mkindex
+        fconfigure coroutine concat join lreplace option fcopy switch auto_reset toplevel 
+        spinbox auto_qualify wm tclPkgUnknown cd tk_getOpenFile scale focus auto_load file 
+        lreverse format lmap image unload read package namespace binary scan apply 
+        tk_menuSetFocus font trace tk_textPaste seek lower zlib destroy chan flush after
+        winfo vwait tk_chooseDirectory scrollbar grab dict menu uplevel auto_mkindex_old 
+        selection try lset rename fileevent yieldto console tk_getSaveFile lrepeat 
+        tclPkgSetup tk_chooseColor grid upvar tailcall encoding unset tcl_findLibrary
+        load history exit tk_messageBox lsort tclLog tk_textCopy bell yield 
+ }
+
+   setAutoComplete $keywords; 
+   syntaxColorForWords $widget keywords red $keywords
+   ::ctext::enableComments $widget
+    syntaxColorForRegex $widget  {
+         numbers             #3aa905      {[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?}
+         strings             blue         {"([^"\\]*(\\.[^"\\]*)*)"|\'([^\'\\]*(\\.[^\'\\]*)*)\'} 
+         singleLineComment   #44616a      {//.*$}
+         preproc             #44616a      {^[:blank]*#.*((\\\n.*)?)*}
+         var                green         {\$(\w|:)*\M}
+         comment1           #44616a {;[:blank]*#.*$}
+         comment2           #44616a {^[:blank]*#.*$}
+                  
+    }
+   
+    ::ctext::comments $widget 
+    syntaxColorForChars $widget operators #2b7d35 {[]{}()<>=+-*;^%$!:.}
+    syntaxEnd $widget;
+}
+
+
+[getmenu].syntax add command -label "Tcl" -command "syntaxTCL [editor]";
+

@@ -1,0 +1,23 @@
+userproc syntaxSQL {widget} {
+    
+    syntaxBegin $widget;
+    set keywords {select from where left join inner update delete order by on sum greatest group ascending descending asc desc and or not like}
+    
+    setAutoComplete $keywords; 
+    syntaxColorForWords $widget keywords red $keywords
+    syntaxColorForRegex $widget  {
+         numbers             #3aa905      {[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?}
+         strings             blue         {"([^"\\]*(\\.[^"\\]*)*)"|\'([^\'\\]*(\\.[^\'\\]*)*)\'} 
+         singleLineComment   #44616a      {//.*$}
+         preproc             #44616a      {^[:blank]*#.*((\\\n.*)?)*}
+                  
+    }
+     
+    
+    syntaxColorForChars $widget operators #2b7d35 {[]{}()<>=+-*;^%$!:.}
+    syntaxEnd $widget;
+     
+}
+
+[getmenu].syntax add command -label "SQL" -command "syntaxSQL [editor]";
+
