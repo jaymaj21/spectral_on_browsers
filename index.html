@@ -1816,10 +1816,18 @@ document.addEventListener('keydown', function(event) {
             speakSelection();
         } else if (event.key === 'V') {
             event.preventDefault();
-             pasteSegmentsAcrossLines();
+            if (!cursors || cursors.length === 0) {
+                pasteSegmentsAcrossLines();
+            } else {
+                pasteHtmlAtCursors();
+            }
         } else if (event.key === 'v') {
             event.preventDefault();
-            pasteSegmentsAtLineStarts();
+            if (!cursors || cursors.length === 0) {
+                pasteSegmentsAtLineStarts();
+            } else {
+                pasteHtmlAtCursors();
+            }
         }
             
         
@@ -2708,15 +2716,50 @@ function copyHandler(e) {
         anchor.removeAttribute('onclick'); // remove the JS inline
     });
 
-    
-    // Apply post-processing to preserve indentation
+    // HTML version for pasting to HTML-aware apps (email, Word, etc.)
     const html = postProcessForEmail(container.innerHTML);
+
+    // Text version for plain text pasting
+    const plainText = extractTextWithNewlines(container);
+
+    e.clipboardData.setData('text/html', html);
+    e.clipboardData.setData('text/plain', plainText);
     
 
-    // Set the processed HTML to clipboard
-    e.clipboardData.setData('text/html', html);
-    e.clipboardData.setData('text/plain', container.textContent);
 }
+
+function extractTextWithNewlines(container) {
+    let result = '';
+
+    function walk(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            result += node.nodeValue;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag = node.tagName.toLowerCase();
+
+            if (['div', 'p', 'br', 'li', 'tr'].includes(tag)) {
+                if (!result.endsWith('\n')) result += '\n';
+            }
+
+            for (const child of node.childNodes) {
+                walk(child);
+            }
+
+            if (['div', 'p', 'li', 'tr'].includes(tag)) {
+                if (!result.endsWith('\n')) result += '\n';
+            }
+        }
+    }
+
+    walk(container);
+
+    return result
+        .replace(/\n{3,}/g, '\n\n')  // Collapse triple+ newlines to double
+        .replace(/[ \t]+\n/g, '\n')  // Trim trailing spaces
+        .trim();
+}
+
+
 
 document.getElementById('editor').addEventListener('paste', function (event) {
     // Allow browser paste first
@@ -4497,6 +4540,109 @@ async function pasteSegmentsAtLineStarts() {
         setStatus("Error accessing clipboard.");
     }
 }
+
+async function pasteHtmlAtCursors() {
+    if (!cursors || cursors.length === 0) {
+        setStatus("No multi-cursors present.");
+        return;
+    }
+
+    try {
+        const clipboardItems = await navigator.clipboard.read();
+        let pasteContent = null;
+
+        // 1. Try HTML
+        for (const item of clipboardItems) {
+            if (item.types.includes("text/html")) {
+                const blob = await item.getType("text/html");
+                pasteContent = await blob.text();
+                break;
+            }
+        }
+
+        // 2. Try image (as fallback before plain text)
+        if (!pasteContent) {
+            for (const item of clipboardItems) {
+                for (const type of item.types) {
+                    if (type.startsWith("image/")) {
+                        const blob = await item.getType(type);
+                        const base64 = await blobToBase64(blob);
+                        pasteContent = `<img src="${base64}" />`;
+                        break;
+                    }
+                }
+                if (pasteContent) break;
+            }
+        }
+
+        // 3. Fallback to plain text
+        if (!pasteContent) {
+            pasteContent = await navigator.clipboard.readText();
+            if (pasteContent) {
+                pasteContent = pasteContent
+                    .split(/\r?\n/)
+                    .map(line => `<div>${line}</div>`)
+                    .join('');
+            }
+        }
+
+        if (!pasteContent || pasteContent.trim().length === 0) {
+            setStatus("Clipboard is empty.");
+            return;
+        }
+
+        // Remove old cursor visuals
+        clearCursorSpans();
+
+        // Insert and restore new cursors
+        const newCursors = [];
+
+        const sortedCursors = [...cursors].sort((a, b) =>
+            b.range.compareBoundaryPoints(Range.START_TO_START, a.range)
+        );
+
+        for (const cursor of sortedCursors) {
+            const range = cursor.range;
+            const frag = document.createRange().createContextualFragment(pasteContent);
+
+            // Capture last node of inserted fragment
+            const lastNode = frag.lastChild;
+            range.deleteContents();
+            range.insertNode(frag);
+
+            const newRange = document.createRange();
+
+            if (lastNode?.nodeType === Node.TEXT_NODE) {
+                newRange.setStart(lastNode, lastNode.length);
+            } else {
+                newRange.setStartAfter(lastNode);
+            }
+
+            newRange.collapse(true);
+            newCursors.push({ range: newRange, span: null });
+        }
+
+        cursors = newCursors;
+        updateCursorVisualPositions();
+
+        setStatus(`Pasted into ${cursors.length} cursor(s).`);
+
+    } catch (err) {
+        console.error(err);
+        setStatus("Clipboard paste failed.");
+    }
+}
+
+// Helper: convert blob to base64
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
 
 
 </script>
