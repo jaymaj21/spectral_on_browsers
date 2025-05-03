@@ -1828,6 +1828,12 @@ document.addEventListener('keydown', function(event) {
             } else {
                 pasteHtmlAtCursors();
             }
+        } else if (event.key === 'k') {
+            event.preventDefault();
+            keeplines();
+        } else if (event.key === 'd') {
+            event.preventDefault();
+            dellines();
         }
             
         
@@ -4643,6 +4649,116 @@ function blobToBase64(blob) {
     });
 }
 
+// Inserts temporary markers to explicitly segment lines visually
+function explicitlySegmentLines(editor) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null);
+    const breaks = [];
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const textLength = node.textContent.length;
+
+        for (let i = 1; i < textLength; i++) {
+            const rangeBefore = document.createRange();
+            const rangeAfter = document.createRange();
+            rangeBefore.setStart(node, i - 1);
+            rangeBefore.setEnd(node, i);
+            rangeAfter.setStart(node, i);
+            rangeAfter.setEnd(node, i + 1);
+
+            const rectBefore = rangeBefore.getBoundingClientRect();
+            const rectAfter = rangeAfter.getBoundingClientRect();
+
+            if (Math.abs(rectAfter.top - rectBefore.top) > 2) {
+                breaks.push({ node, offset: i });
+            }
+        }
+    }
+
+    // Insert line breaks at the detected points in reverse order
+    breaks.reverse().forEach(breakPoint => {
+        const br = document.createElement('br');
+        const range = document.createRange();
+        range.setStart(breakPoint.node, breakPoint.offset);
+        range.collapse(true);
+        range.insertNode(br);
+    });
+}
+
+// Get explicit lines after segmentation
+function getExplicitLines(editor) {
+    explicitlySegmentLines(editor);
+    const html = editor.innerHTML;
+    const lines = html.split(/<br\s*\/?>/i);
+    return lines;
+}
+
+// Mark cursor positions explicitly
+function markCursors() {
+    cursors.forEach(cursor => {
+        const marker = document.createElement('span');
+        marker.className = 'cursor-marker';
+        cursor.range.insertNode(marker);
+    });
+}
+
+// Remove cursor markers and return their indices
+function extractCursorLines(lines) {
+    const cursorLines = new Set();
+    lines.forEach((line, idx) => {
+        if (line.includes('<span class="cursor-marker"></span>')) {
+            cursorLines.add(idx);
+            lines[idx] = line.replace(/<span class="cursor-marker"><\/span>/g, '');
+        }
+    });
+    return cursorLines;
+}
+
+// Restore editor content from lines
+function restoreLines(editor, lines) {
+    editor.innerHTML = lines.join('<br>');
+}
+
+// Keeplines: keeps only lines with cursors
+function keeplines() {
+    const editor = document.getElementById('editor');
+    if (!cursors || cursors.length === 0) {
+        setStatus("No cursors available.");
+        return;
+    }
+
+    markCursors();
+    let lines = getExplicitLines(editor);
+    const cursorLines = extractCursorLines(lines);
+
+    lines = lines.filter((_, idx) => cursorLines.has(idx));
+    restoreLines(editor, lines);
+
+    cursors = [];
+    setStatus("Kept only lines containing cursors.");
+}
+
+// Dellines: deletes lines with cursors
+function dellines() {
+    const editor = document.getElementById('editor');
+    if (!cursors || cursors.length === 0) {
+        setStatus("No cursors available.");
+        return;
+    }
+
+    markCursors();
+    let lines = getExplicitLines(editor);
+    const cursorLines = extractCursorLines(lines);
+
+    lines = lines.filter((_, idx) => !cursorLines.has(idx));
+    restoreLines(editor, lines);
+
+    cursors = [];
+    setStatus("Deleted lines containing cursors.");
+}
 
 
 </script>
@@ -4737,6 +4853,8 @@ function blobToBase64(blob) {
   Ctrl+Alt+y     Redo undone state reversal 
   Ctrl+Alt+c     Clear temporary highlighting
   Ctrl+Alt+v/V   Paste accross lines at starts(v)/ends(V)
+  Ctrl+Alt+d     Delete lines with cursors
+  Ctrl+Alt+k     Keep only lines with cursors
   Tab            Indent selection
   Shift+Tab      Unindent selection 
 Text Commands (Can be used with Javascript Eval):
