@@ -1835,12 +1835,13 @@ document.addEventListener('keydown', function(event) {
             event.preventDefault();
             dellines();
         }
-            
-        
     } else if (cursors.length == 0 && event.key === 'Enter' && event.target.id === 'editor') {
-        event.preventDefault();
-        smartReturnPress();
-    } else if (cursors.length == 0 &&  (event.key === '}' || event.key === '{')) {
+        const editor = document.getElementById('editor');
+        if(editor.innerHTML!="") {
+            event.preventDefault();
+            smartReturnPress();
+        }
+     } else if (cursors.length == 0 &&  (event.key === '}' || event.key === '{')) {
         event.preventDefault();
         handleBraceKey(event);
      }
@@ -4758,6 +4759,55 @@ function dellines() {
 
     cursors = [];
     setStatus("Deleted lines containing cursors.");
+}
+////////////////////////////////
+// Main function: Reverse selected lines or all lines
+function reverseLines() {
+    const editor = document.getElementById('editor');
+    
+    // Segment explicitly
+    let lines = getExplicitLines(editor);
+
+    if (savedEditorRange.isCollapsed) {
+        // No selection: reverse all lines
+        lines = lines.reverse();
+    } else {
+        // Selection exists: find selection boundaries explicitly
+        const range = savedEditorRange;
+
+        // Insert markers to identify selected lines
+        const startMarker = document.createElement('span');
+        const endMarker = document.createElement('span');
+        startMarker.id = 'selection-start';
+        endMarker.id = 'selection-end';
+
+        range.insertNode(startMarker);
+        range.collapse(false);
+        range.insertNode(endMarker);
+
+        // Re-segment lines with markers in place
+        lines = getExplicitLines(editor);
+
+        // Identify lines containing markers
+        let startIdx = lines.findIndex(line => line.includes('id="selection-start"'));
+        let endIdx = lines.findIndex(line => line.includes('id="selection-end"'));
+
+        if (startIdx > endIdx) [startIdx, endIdx] = [endIdx, startIdx];
+
+        // Clean markers from lines
+        lines[startIdx] = lines[startIdx].replace(/<span id="selection-start"><\/span>/g, '');
+        lines[endIdx] = lines[endIdx].replace(/<span id="selection-end"><\/span>/g, '');
+
+        // Reverse only selected lines
+        const before = lines.slice(0, startIdx);
+        const selected = lines.slice(startIdx, endIdx + 1).reverse();
+        const after = lines.slice(endIdx + 1);
+
+        lines = before.concat(selected, after);
+    }
+
+    restoreLines(editor, lines);
+    setStatus("Lines reversed successfully.");
 }
 
 
