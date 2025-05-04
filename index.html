@@ -4932,7 +4932,7 @@ function generateFileName() {
 <div id="helpPopup" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
      background:white; color:black; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:10000;
      max-width: 600px; max-height: 80%; overflow-y: auto; font-family: monospace; font-size: 14px;">
-  <strong> Spectral Keystroke Commands </strong><pre>
+  <strong> Spectral Keystroke Commands </strong><button onclick="closeHelp()">Close</button><pre>
   Ctrl+c         Copy
   Ctrl+x         Cut
   Ctrl+v         Paste
@@ -4966,9 +4966,7 @@ Text Commands (Can be used with Javascript Eval):
   lc           → Convert to lowercase
   title        → Convert to Title Case
   darken       → Switch to dark mode
-</pre>
-  <button onclick="closeHelp()">Close</button>
-</div>
+</pre></div>
 
 
 <div id="awsConfigPopup" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
