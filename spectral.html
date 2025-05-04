@@ -773,6 +773,7 @@
         ;
 }
 
+let currentFileName = null;
 document.getElementById('fileLoader').addEventListener('change', function(event) {
     const file = event.target.files[0];
 
@@ -781,6 +782,7 @@ document.getElementById('fileLoader').addEventListener('change', function(event)
         return;
     }
 
+    currentFileName = file.name;
     const reader = new FileReader();
 
     reader.onload = function(e) {
@@ -1847,6 +1849,24 @@ document.addEventListener('keydown', function(event) {
         } else if (event.key === 'd') {
             event.preventDefault();
             dellines();
+        } else if (event.key === 's') {
+            event.preventDefault();
+            const editorContent = document.getElementById('editor').outerHTML;
+    
+            // Choose your desired filename programmatically
+            const filename = generateFileName(); // Your custom function or static name
+    
+            const blob = new Blob([editorContent], { type: 'text/html' });
+            const downloadLink = document.createElement('a');
+            
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = filename;  // This sets the default filename
+    
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+    
+            document.body.removeChild(downloadLink);
+            setStatus(`File '${filename}' saved.`);
         }
     } else if (cursors.length == 0 && event.key === 'Enter' && event.target.id === 'editor') {
         const editor = document.getElementById('editor');
@@ -4823,6 +4843,21 @@ function reverseLines() {
     setStatus("Lines reversed successfully.");
 }
 
+////////////////////
+// Example custom function to generate filename dynamically
+function generateFileName() {
+    if (typeof currentFileName === 'string' && currentFileName.trim()) {
+        const name = currentFileName.trim();
+        if (name.endsWith('.html') || name.endsWith('.htm')) {
+            return name;
+        } else {
+            return name + '.html';
+        }
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return `editor-content-${timestamp}.html`;
+}
 
 </script>
 <div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
@@ -4897,7 +4932,7 @@ function reverseLines() {
 <div id="helpPopup" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
      background:white; color:black; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:10000;
      max-width: 600px; max-height: 80%; overflow-y: auto; font-family: monospace; font-size: 14px;">
-  <h4> Spectral Keystroke Commands </h4><pre>
+  <strong> Spectral Keystroke Commands </strong><pre>
   Ctrl+c         Copy
   Ctrl+x         Cut
   Ctrl+v         Paste
@@ -4918,8 +4953,9 @@ function reverseLines() {
   Ctrl+Alt+v/V   Paste accross lines at starts(v)/ends(V)
   Ctrl+Alt+d     Delete lines with cursors
   Ctrl+Alt+k     Keep only lines with cursors
+  Ctrl+Alt+s     Save editor content locally
   Tab            Indent selection
-  Shift+Tab      Unindent selection 
+  Shift+Tab      Unindent selection
 Text Commands (Can be used with Javascript Eval):
   wc           → Word count of selection
   reflow(n)    → Reflow selected text to n-character lines
