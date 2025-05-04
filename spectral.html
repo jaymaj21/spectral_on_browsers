@@ -773,7 +773,7 @@
         ;
 }
 
- document.getElementById('fileLoader').addEventListener('change', function(event) {
+document.getElementById('fileLoader').addEventListener('change', function(event) {
     const file = event.target.files[0];
 
     if (!file) {
@@ -785,18 +785,30 @@
 
     reader.onload = function(e) {
         const contents = e.target.result;
+        const editor = document.getElementById('editor');
 
-        // Create a new <div> element
-        
+        if (file.type === 'text/html' || file.name.endsWith('.html')) {
+            // Parse the HTML content
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(contents, 'text/html');
+
+            const loadedEditorDiv = doc.getElementById('editor');
+
+            if (loadedEditorDiv) {
+                // Found an editor div, load its innerHTML
+                editor.innerHTML = loadedEditorDiv.innerHTML;
+                setStatus("Loaded editor content from HTML file.");
+                return;
+            }
+        }
+
+        // Fallback to plain text loading as before
         const loadingElement = document.createElement('div');
-
-        //loadingElement.innerText = contents;
-
         loadingElement.innerHTML = escapeTextWithLineBreaks(contents);
-
-        // Append to the editor element
-        document.getElementById('editor').innerHTML = "";
-        document.getElementById('editor').appendChild(loadingElement);
+        
+        editor.innerHTML = "";
+        editor.appendChild(loadingElement);
+        setStatus("Loaded plain text file content.");
     };
 
     reader.onerror = function(e) {
@@ -805,6 +817,7 @@
 
     reader.readAsText(file); // Read as plain text
 });
+
 
 
     function secondHalfBoldWords(editableId) {
