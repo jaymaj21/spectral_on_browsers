@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spectral</title>
     <style>
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://jm21.s3.us-east-1.amazonaws.com/static_pages/opendyslexicmono-regular-webfont.woff2') format('woff2');
+  font-weight: normal;
+  font-style: small;
+}
+@font-face {
+  font-family: 'OpenDyslexicMono';
+  src: url('https://jm21.s3.us-east-1.amazonaws.com/static_pages/opendyslexicmono-regular-webfont.woff2') format('woff2');
+  font-weight: normal;
+  font-style: small;
+}
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -288,6 +300,12 @@
 <div id="editor" class="editor" contenteditable="true"></div>
 <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1485.0.min.js"></script>
 <script>
+        const isMac = /Mac/i.test(navigator.platform);
+        
+        function ctrlAltEquivalent(event) {
+            return (event.ctrlKey && event.altKey) || (isMac && event.metaKey);
+        }
+
         var currentFixedHighlighter = null;
         function setHighlighterCursor(highlighterColor)
         {
@@ -552,16 +570,21 @@
             
                 
             document.getElementById('hlButton' + id).addEventListener('click', function(event) {
-
-                var bgColorFromButtonStyle = window.getComputedStyle(event.target).backgroundColor;
-                const selection = window.getSelection();
-                if (selection.rangeCount === 0 || selection.isCollapsed) {
-                     toggleFixedHighlighterWhenEmptySelection(bgColorFromButtonStyle, event.target);
-                     return;
-                }
                 
-                applyHighlightAndFont(bgColorFromButtonStyle, true);
-              });
+               if (event.ctrlKey) {
+                    openColorPickerForButton(id);
+                } else {
+
+                    var bgColorFromButtonStyle = window.getComputedStyle(event.target).backgroundColor;
+                    const selection = window.getSelection();
+                    if (selection.rangeCount === 0 || selection.isCollapsed) {
+                         toggleFixedHighlighterWhenEmptySelection(bgColorFromButtonStyle, event.target);
+                         return;
+                    }
+                    
+                    applyHighlightAndFont(bgColorFromButtonStyle, true);
+                }
+           });
              
             registerEventHandlers(id-1); 
         }
@@ -578,6 +601,46 @@
             }
         });
         
+        function rgbToHex(rgb) {
+            const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+            if (!match) return '#000000'; // fallback
+        
+            const r = parseInt(match[1]).toString(16).padStart(2, '0');
+            const g = parseInt(match[2]).toString(16).padStart(2, '0');
+            const b = parseInt(match[3]).toString(16).padStart(2, '0');
+        
+            return `#${r}${g}${b}`;
+        }
+        
+        
+        function openColorPickerForButton(buttonId) {
+            const button = document.getElementById("hlButton"+buttonId);
+            const searchBox = document.getElementById('searchBox' + buttonId);
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.value = rgbToHex(getComputedStyle(button).backgroundColor); 
+        
+            input.style.position = 'absolute';
+            input.style.left = '-9999px'; // hide off-screen
+            document.body.appendChild(input);
+        
+            input.addEventListener('input', () => {
+                const newColor = input.value;
+                button.dataset.color = newColor;
+                button.style.backgroundColor = newColor;
+                searchBox.dataset.color = newColor;
+                searchBox.style.backgroundColor = newColor;
+            });
+    
+          // Optional: remove input after use
+          input.addEventListener('change', () => {
+              setStatus(`Highlighter color updated to ${input.value}`);
+              document.body.removeChild(input);
+          });
+        
+          input.click(); 
+      }
+
          
         function randomHilightColor() {
             
@@ -687,6 +750,9 @@
         const span = document.createElement('span');
 
         span.className = colid === 0 ? 'highlight' : 'highlight' + colid;
+        if (colid >=1 && colid <= 7 ) {
+            span.style.backgroundColor = document.getElementById("searchBox"+colid).style.backgroundColor;
+        }
         range.setStart(node, spanStart);
         range.setEnd(node, spanEnd);
         
@@ -727,9 +793,7 @@
             if(removeBoldMode) span.style.fontWeight = 'normal';
             if(removeItalicsMode) span.style.fontStyle = 'normal';
             
-            
-            
-            
+
             const colorSel = document.getElementById("colorChooser").value;
             const fontSel = document.getElementById("fontChooser").value;
             const sizeSel = document.getElementById("sizeChooser").value;
@@ -1807,7 +1871,7 @@ document.addEventListener('keydown', function(event) {
              searchBox.focus();
         }
 
-    } else if (event.ctrlKey && event.altKey) {
+    } else if ( ctrlAltEquivalent(event) ) {
         if (event.key.toLowerCase() === 'm') {
           event.preventDefault();
           matchAndHighlightBrackets(); 
@@ -1867,7 +1931,11 @@ document.addEventListener('keydown', function(event) {
     
             document.body.removeChild(downloadLink);
             setStatus(`File '${filename}' saved.`);
-        }
+        } else if (event.key === 'n') {
+		    event.preventDefault();
+            toggleLineNumbers();
+		}
+		
     } else if (cursors.length == 0 && event.key === 'Enter' && event.target.id === 'editor') {
         const editor = document.getElementById('editor');
         if(editor.innerHTML!="") {
@@ -1875,6 +1943,10 @@ document.addEventListener('keydown', function(event) {
             smartReturnPress();
         }
      } else if (cursors.length == 0 &&  (event.key === '}' || event.key === '{')) {
+        if (!event.target.closest('#editor')) {
+            return; // Let it behave normally elsewhere
+        } 
+        
         event.preventDefault();
         handleBraceKey(event);
      }
@@ -2382,6 +2454,7 @@ function handleBraceKey(event) {
   const lineText = node.textContent.slice(lineStartOffset, lineEnd);
 
   if (event.key === '}') {
+     
     if (/^\s+$/.test(lineText)) {
       // Remove up to 4 leading spaces
       let newLineText = lineText;
@@ -2410,6 +2483,7 @@ function handleBraceKey(event) {
       event.preventDefault();
     }
   } else if (event.key === '{') {
+      
     event.preventDefault();
 
     // Insert "{}" and move cursor between
@@ -2475,7 +2549,7 @@ function showJsEvalPopup() {
             let toEval = code;
           
             
-            if (!/[()]/.test(toEval) && /^[a-zA-Z_$][\w$]*$/.test(toEval)) {
+            if (!/[()=]/.test(toEval)) {
                 toEval += '()';
             }
 
@@ -4859,6 +4933,70 @@ function generateFileName() {
     return `editor-content-${timestamp}.html`;
 }
 
+
+let lineNumbersShown = false;
+
+function toggleLineNumbers() {
+    const editor = document.getElementById('editor');
+
+    if (lineNumbersShown) {
+        // Remove all existing line-number spans
+        const spans = editor.querySelectorAll('span.line-number');
+        spans.forEach(span => span.remove());
+        lineNumbersShown = false;
+        setStatus("Line numbers hidden.");
+        return;
+    }
+
+    // Ensure lines are segmented for visual clarity
+    explicitlySegmentLines(editor);
+
+    // Collect visual lines by first visible character
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null);
+    const lineHeads = [];
+    let lastTop = null;
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const text = node.textContent;
+        for (let i = 0; i < text.length; i++) {
+            const range = document.createRange();
+            range.setStart(node, i);
+            range.setEnd(node, i + 1);
+            const rect = range.getBoundingClientRect();
+            if (rect.height === 0) continue;
+
+            const top = Math.round(rect.top);
+            if (lastTop === null || Math.abs(top - lastTop) > 2) {
+                lineHeads.push({ node, offset: i });
+                lastTop = top;
+            }
+            break; // only consider the first visible character of this node
+        }
+    }
+
+    const padWidth = String(lineHeads.length).length;
+
+    // Insert line-number spans before the head of each line
+    lineHeads.forEach((line, index) => {
+        const span = document.createElement('span');
+        span.className = 'line-number';
+        span.textContent = String(index + 1).padStart(padWidth, '0') + ' ';
+        span.style.fontFamily = 'monospace';
+        span.style.color = 'gray';
+        span.style.marginRight = '0.5em';
+
+        const range = document.createRange();
+        range.setStart(line.node, line.offset);
+        range.collapse(true);
+        range.insertNode(span);
+    });
+
+    lineNumbersShown = true;
+    setStatus("Line numbers shown.");
+}
+
+
 </script>
 <div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
      background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
@@ -4932,7 +5070,8 @@ function generateFileName() {
 <div id="helpPopup" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
      background:white; color:black; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:10000;
      max-width: 600px; max-height: 80%; overflow-y: auto; font-family: monospace; font-size: 14px;">
-  <strong> Spectral Keystroke Commands </strong><button onclick="closeHelp()">Close</button><pre>
+  <strong> Spectral Keystroke Commands </strong><button onclick="closeHelp()">Close</button><br>
+  <strong>Use '⌘' instead of 'Ctrl+Alt' on Mac</strong><pre>
   Ctrl+c         Copy
   Ctrl+x         Cut
   Ctrl+v         Paste
@@ -5020,5 +5159,4 @@ Text Commands (Can be used with Javascript Eval):
 
 </body>
 </html>
-
 
