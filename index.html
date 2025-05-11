@@ -1953,13 +1953,14 @@ document.addEventListener('keydown', function(event) {
      else if (cursors.length == 0 && event.key === 'Tab') {
         event.preventDefault();
         indentSelectedLines(!event.shiftKey);
-     } else if (cursors.length == 0 && event.key === 'Escape') {
+     } else if (event.key === 'Escape') {
         event.preventDefault();
         showJsEvalPopup();
      } else if (cursors.length > 0 && !event.ctrlKey && !event.metaKey) {
+	    if(!event.target.closest('#editor')) return;
         event.preventDefault();
 
-       if (event.key === 'Delete') {
+       if (event.key === 'Delete') {!event.target.closest('#editor')
            
             deleteAtCursors();
             
@@ -4995,7 +4996,6 @@ function toggleLineNumbers() {
     lineNumbersShown = true;
     setStatus("Line numbers shown.");
 }
-
 function insertGeneratedTextAtCursors(generatorFn) {
     if (typeof generatorFn !== 'function') {
         console.error("insertGeneratedTextAtCursors: parameter must be a function.");
@@ -5035,6 +5035,11 @@ function insertGeneratedTextAtCursors(generatorFn) {
     setStatus(`Inserted generated text at ${cursors.length} cursor(s).`);
 }
 
+function enumerateCursors(countStart = 1) 
+{
+    let counter = countStart;
+    insertGeneratedTextAtCursors(() => `#${counter++} `);
+}
 </script>
 <div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
      background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
