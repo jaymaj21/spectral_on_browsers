@@ -4996,6 +4996,44 @@ function toggleLineNumbers() {
     setStatus("Line numbers shown.");
 }
 
+function insertGeneratedTextAtCursors(generatorFn) {
+    if (typeof generatorFn !== 'function') {
+        console.error("insertGeneratedTextAtCursors: parameter must be a function.");
+        return;
+    }
+
+    if (!cursors || cursors.length === 0) {
+        setStatus("No multi-cursors present.");
+        return;
+    }
+
+    clearCursorSpans(); // Remove visual cursors before DOM manipulation
+
+    // Work in reverse order so earlier insertions don’t mess up later cursor positions
+    const sortedCursors = [...cursors].sort((a, b) =>
+        b.range.compareBoundaryPoints(Range.START_TO_START, a.range)
+    );
+
+    const newCursors = [];
+
+    for (const cursor of sortedCursors) {
+        const range = cursor.range;
+        const text = generatorFn(); // generate new text for this cursor
+        const textNode = document.createTextNode(text);
+        range.deleteContents();     // remove selection if any
+        range.insertNode(textNode);
+
+        const newRange = document.createRange();
+        newRange.setStartAfter(textNode);
+        newRange.collapse(true);
+        newCursors.push({ range: newRange, span: null });
+    }
+
+    cursors = newCursors;
+    updateCursorVisualPositions();
+
+    setStatus(`Inserted generated text at ${cursors.length} cursor(s).`);
+}
 
 </script>
 <div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
