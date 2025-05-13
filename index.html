@@ -301,6 +301,10 @@
 <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1485.0.min.js"></script>
 <script>
         const isMac = /Mac/i.test(navigator.platform);
+		
+///// Text input popup
+let textPopupCallback = null;
+let savedEditorRange = null;
         
         function ctrlAltEquivalent(event) {
             return (event.ctrlKey && event.altKey) || (isMac && event.metaKey);
@@ -402,7 +406,7 @@
                  }
         }
 
-        function applyInlineStyle(stylesObj, editableId) {
+        function applyInlineStyle(stylesObj, editableId, highlighterId = null) {
             const editor = document.getElementById(editableId);
            
             const range = savedEditorRange;
@@ -470,6 +474,7 @@
                 if (spanStart === spanEnd) return;  // Skip empty ranges
 
                 const styledSpan = document.createElement('span');
+				if(highlighterId != null) styledSpan.className = "highlight"+highlighterId;
                  Object.keys(stylesObj).forEach(prop => {
                     styledSpan.style[prop] = stylesObj[prop];
                 });
@@ -501,7 +506,7 @@
                 document.getElementById('editor').innerHTML = htmlContent;
             }
         }
-        function applyHighlightAndFont(color, whiteIsTransparent=true)
+        function applyHighlightAndFont(color, whiteIsTransparent=true, highlighterId = null)
         {
             const colorSel = document.getElementById("colorChooser").value;
             const fontSel = document.getElementById("fontChooser").value;
@@ -530,7 +535,7 @@
                }
             }
             augmentFontWeightStyleAndDecoration(styles);
-            applyInlineStyle(styles, 'editor');
+            applyInlineStyle(styles, 'editor', highlighterId);
 
         }
       
@@ -582,7 +587,7 @@
                          return;
                     }
                     
-                    applyHighlightAndFont(bgColorFromButtonStyle, true);
+                    applyHighlightAndFont(bgColorFromButtonStyle, true, id);
                 }
            });
              
@@ -1334,9 +1339,6 @@ function popup(txt, popupid)
   doc.close();
 }
 
-///// Text input popup
-let textPopupCallback = null;
-let savedEditorRange = null;
 
 function showTextPopup(callback, heading, initialText = '') {
     
@@ -1563,7 +1565,7 @@ editor.addEventListener('click', insertCursorOnMouseDown);
 editor.addEventListener('mouseup', function() { 
     saveEditorRange();  
     if (currentFixedHighlighter != null) {
-        applyHighlightAndFont(currentFixedHighlighter, true);
+        applyHighlightAndFont(currentFixedHighlighter, true, currentFixedHighlighter);
     }
 
 });
@@ -1913,6 +1915,15 @@ document.addEventListener('keydown', function(event) {
         } else if (event.key === 'd') {
             event.preventDefault();
             dellines();
+        } else if (event.key === 'K') {
+            event.preventDefault();
+            keeplinesWithHighlights();
+        } else if (event.key === 'D') {
+            event.preventDefault();
+            dellinesWithHighlights();
+        } else if (event.key === 'q') {
+            event.preventDefault();
+            insertDownloadLinkAtSavedRange();
         } else if (event.key === 's') {
             event.preventDefault();
             const editorContent = document.getElementById('editor').outerHTML;
@@ -5040,6 +5051,96 @@ function enumerateCursors(countStart = 1)
     let counter = countStart;
     insertGeneratedTextAtCursors(() => `#${counter++} `);
 }
+
+// Collect all lines and return which ones have a highlight span
+function getLinesWithHighlights() {
+    explicitlySegmentLines(document.getElementById('editor'));
+    const lines = document.getElementById('editor').innerHTML.split(/<br\s*\/?>/i);
+    const highlightedLines = new Set();
+
+    lines.forEach((line, idx) => {
+        if (line.match(/<span class="highlight/)) {
+            highlightedLines.add(idx);
+        }
+    });
+
+    return { lines, highlightedLines };
+}
+
+function keeplinesWithHighlights() {
+    const editor = document.getElementById('editor');
+    const { lines, highlightedLines } = getLinesWithHighlights();
+
+    if (highlightedLines.size === 0) {
+        setStatus("No highlighter spans found in any line.");
+        return;
+    }
+
+    const kept = lines.filter((_, idx) => highlightedLines.has(idx));
+    editor.innerHTML = kept.join('<br>');
+    setStatus("Kept only lines containing highlights.");
+}
+
+function dellinesWithHighlights() {
+    const editor = document.getElementById('editor');
+    const { lines, highlightedLines } = getLinesWithHighlights();
+
+    if (highlightedLines.size === 0) {
+        setStatus("No highlighter spans found in any line.");
+        return;
+    }
+
+    const remaining = lines.filter((_, idx) => !highlightedLines.has(idx));
+    editor.innerHTML = remaining.join('<br>');
+    setStatus("Deleted lines containing highlights.");
+}
+
+function insertDownloadLinkAtSavedRange() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.style.display = 'none';
+
+    fileInput.addEventListener('change', function () {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const dataURL = e.target.result;
+            const fileName = file.name;
+
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = fileName;
+            link.textContent = `📎${fileName}`;
+            link.style.color = 'blue';
+            link.style.textDecoration = 'underline';
+            link.style.cursor = 'pointer';
+
+            if (!savedEditorRange) {
+                setStatus("No saved editor range. Click in the editor first.");
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            fragment.appendChild(link);
+            fragment.appendChild(document.createTextNode(' ')); // optional spacing
+
+            const range = savedEditorRange.cloneRange();
+            range.deleteContents();
+            range.insertNode(fragment);
+            setStatus(`Inserted download link for ${fileName}`);
+        };
+
+        reader.readAsDataURL(file); // base64 encode
+    });
+
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
+}
+
+
 </script>
 <div id="textPopup" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
      background:white; padding:20px; border:1px solid #ccc; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index:9999;">
@@ -5135,6 +5236,9 @@ function enumerateCursors(countStart = 1)
   Ctrl+Alt+v/V   Paste accross lines at starts(v)/ends(V)
   Ctrl+Alt+d     Delete lines with cursors
   Ctrl+Alt+k     Keep only lines with cursors
+  Ctrl+Alt+D     Delete lines with highlighting
+  Ctrl+Alt+K     Keep only lines with highlighting
+  Ctrl+Alt+q     Add attachment
   Ctrl+Alt+s     Save editor content locally
   Tab            Indent selection
   Shift+Tab      Unindent selection
