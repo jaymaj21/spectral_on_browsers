@@ -301,6 +301,10 @@
 <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1485.0.min.js"></script>
 <script>
         const isMac = /Mac/i.test(navigator.platform);
+		
+///// Text input popup
+let textPopupCallback = null;
+let savedEditorRange = null;
         
         function ctrlAltEquivalent(event) {
             return (event.ctrlKey && event.altKey) || (isMac && event.metaKey);
@@ -402,7 +406,7 @@
                  }
         }
 
-        function applyInlineStyle(stylesObj, editableId) {
+        function applyInlineStyle(stylesObj, editableId, highlighterId = null) {
             const editor = document.getElementById(editableId);
            
             const range = savedEditorRange;
@@ -470,6 +474,7 @@
                 if (spanStart === spanEnd) return;  // Skip empty ranges
 
                 const styledSpan = document.createElement('span');
+				if(highlighterId != null) styledSpan.className = "highlight"+highlighterId;
                  Object.keys(stylesObj).forEach(prop => {
                     styledSpan.style[prop] = stylesObj[prop];
                 });
@@ -501,7 +506,7 @@
                 document.getElementById('editor').innerHTML = htmlContent;
             }
         }
-        function applyHighlightAndFont(color, whiteIsTransparent=true)
+        function applyHighlightAndFont(color, whiteIsTransparent=true, highlighterId = null)
         {
             const colorSel = document.getElementById("colorChooser").value;
             const fontSel = document.getElementById("fontChooser").value;
@@ -530,7 +535,7 @@
                }
             }
             augmentFontWeightStyleAndDecoration(styles);
-            applyInlineStyle(styles, 'editor');
+            applyInlineStyle(styles, 'editor', highlighterId);
 
         }
       
@@ -582,7 +587,7 @@
                          return;
                     }
                     
-                    applyHighlightAndFont(bgColorFromButtonStyle, true);
+                    applyHighlightAndFont(bgColorFromButtonStyle, true, id);
                 }
            });
              
@@ -1334,9 +1339,6 @@ function popup(txt, popupid)
   doc.close();
 }
 
-///// Text input popup
-let textPopupCallback = null;
-let savedEditorRange = null;
 
 function showTextPopup(callback, heading, initialText = '') {
     
@@ -1563,7 +1565,7 @@ editor.addEventListener('click', insertCursorOnMouseDown);
 editor.addEventListener('mouseup', function() { 
     saveEditorRange();  
     if (currentFixedHighlighter != null) {
-        applyHighlightAndFont(currentFixedHighlighter, true);
+        applyHighlightAndFont(currentFixedHighlighter, true, currentFixedHighlighter);
     }
 
 });
@@ -1913,6 +1915,15 @@ document.addEventListener('keydown', function(event) {
         } else if (event.key === 'd') {
             event.preventDefault();
             dellines();
+        } else if (event.key === 'K') {
+            event.preventDefault();
+            keeplinesWithHighlights();
+        } else if (event.key === 'D') {
+            event.preventDefault();
+            dellinesWithHighlights();
+        } else if (event.key === 'q') {
+            event.preventDefault();
+            insertDownloadLinkAtSavedRange();
         } else if (event.key === 's') {
             event.preventDefault();
             const editorContent = document.getElementById('editor').outerHTML;
@@ -1934,7 +1945,11 @@ document.addEventListener('keydown', function(event) {
         } else if (event.key === 'n') {
 		    event.preventDefault();
             toggleLineNumbers();
-		}
+		} else if (event.key === 'f') {
+		    event.preventDefault();
+                    setCurrentFileNameInteractive();
+		  }
+	
 		
     } else if (cursors.length == 0 && event.key === 'Enter' && event.target.id === 'editor') {
         const editor = document.getElementById('editor');
@@ -1953,13 +1968,14 @@ document.addEventListener('keydown', function(event) {
      else if (cursors.length == 0 && event.key === 'Tab') {
         event.preventDefault();
         indentSelectedLines(!event.shiftKey);
-     } else if (cursors.length == 0 && event.key === 'Escape') {
+     } else if (event.key === 'Escape') {
         event.preventDefault();
         showJsEvalPopup();
      } else if (cursors.length > 0 && !event.ctrlKey && !event.metaKey) {
+	    if(!event.target.closest('#editor')) return;
         event.preventDefault();
 
-       if (event.key === 'Delete') {
+       if (event.key === 'Delete') {!event.target.closest('#editor')
            
             deleteAtCursors();
             
@@ -4919,6 +4935,13 @@ function reverseLines() {
 
 ////////////////////
 // Example custom function to generate filename dynamically
+
+function setCurrentFileNameInteractive() {
+    promptForFields(["File Name"], function(result) {
+       currentFileName = result["File Name"]; 
+    });
+}
+
 function generateFileName() {
     if (typeof currentFileName === 'string' && currentFileName.trim()) {
         const name = currentFileName.trim();
@@ -4995,7 +5018,6 @@ function toggleLineNumbers() {
     lineNumbersShown = true;
     setStatus("Line numbers shown.");
 }
-
 function insertGeneratedTextAtCursors(generatorFn) {
     if (typeof generatorFn !== 'function') {
         console.error("insertGeneratedTextAtCursors: parameter must be a function.");
@@ -5033,6 +5055,320 @@ function insertGeneratedTextAtCursors(generatorFn) {
     updateCursorVisualPositions();
 
     setStatus(`Inserted generated text at ${cursors.length} cursor(s).`);
+}
+
+function enumerateCursors(countStart = 1) 
+{
+    let counter = countStart;
+    insertGeneratedTextAtCursors(() => `#${counter++} `);
+}
+
+// Collect all lines and return which ones have a highlight span
+function getLinesWithHighlights() {
+    explicitlySegmentLines(document.getElementById('editor'));
+    const lines = document.getElementById('editor').innerHTML.split(/<br\s*\/?>/i);
+    const highlightedLines = new Set();
+
+    lines.forEach((line, idx) => {
+        if (line.match(/<span class="highlight/)) {
+            highlightedLines.add(idx);
+        }
+    });
+
+    return { lines, highlightedLines };
+}
+
+function keeplinesWithHighlights() {
+    const editor = document.getElementById('editor');
+    const { lines, highlightedLines } = getLinesWithHighlights();
+
+    if (highlightedLines.size === 0) {
+        setStatus("No highlighter spans found in any line.");
+        return;
+    }
+
+    const kept = lines.filter((_, idx) => highlightedLines.has(idx));
+    editor.innerHTML = kept.join('<br>');
+    setStatus("Kept only lines containing highlights.");
+}
+
+function dellinesWithHighlights() {
+    const editor = document.getElementById('editor');
+    const { lines, highlightedLines } = getLinesWithHighlights();
+
+    if (highlightedLines.size === 0) {
+        setStatus("No highlighter spans found in any line.");
+        return;
+    }
+
+    const remaining = lines.filter((_, idx) => !highlightedLines.has(idx));
+    editor.innerHTML = remaining.join('<br>');
+    setStatus("Deleted lines containing highlights.");
+}
+
+function insertDownloadLinkAtSavedRange() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.style.display = 'none';
+
+    fileInput.addEventListener('change', function () {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const dataURL = e.target.result;
+            const fileName = file.name;
+
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = fileName;
+            link.textContent = `📎${fileName}`;
+            link.style.color = 'blue';
+            link.style.textDecoration = 'underline';
+            link.style.cursor = 'pointer';
+
+            if (!savedEditorRange) {
+                setStatus("No saved editor range. Click in the editor first.");
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            fragment.appendChild(link);
+            fragment.appendChild(document.createTextNode(' ')); // optional spacing
+
+            const range = savedEditorRange.cloneRange();
+            range.deleteContents();
+            range.insertNode(fragment);
+            setStatus(`Inserted download link for ${fileName}`);
+        };
+
+        reader.readAsDataURL(file); // base64 encode
+    });
+
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
+}
+
+/// Index based API
+function getDOMPositionFromIndex(indexStr) {
+    const editor = document.getElementById("editor");
+    if (!editor) return null;
+    editor.normalize(); // Simplify the DOM structure
+
+    const lines = [];
+    let currentLine = [];
+    let walker = document.createTreeWalker(editor, NodeFilter.SHOW_ALL, null, false);
+
+    function flushLine() {
+        if (currentLine.length > 0) {
+            lines.push([...currentLine]);
+            currentLine = [];
+        }
+    }
+
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+
+        if (node.nodeType === Node.ELEMENT_NODE &&
+            ["DIV", "P", "BR"].includes(node.tagName)) {
+            flushLine();
+        } else if (node.nodeType === Node.TEXT_NODE) {
+            const parts = node.textContent.split(/\r?\n/);
+            for (let i = 0; i < parts.length; i++) {
+                if (i > 0) flushLine();
+                currentLine.push({ node, startOffset: node.textContent.indexOf(parts[i]), text: parts[i] });
+            }
+        } else {
+            currentLine.push({ node });
+        }
+    }
+
+    flushLine(); // push the last line
+
+    if (indexStr === "end") {
+        const last = lines[lines.length - 1];
+        if (!last) return null;
+        const lastNode = last.find(n => n.node && n.node.nodeType === Node.TEXT_NODE);
+        if (!lastNode) return null;
+        return { container: lastNode.node, offset: lastNode.node.textContent.length };
+    }
+
+    const match = indexStr.match(/^(\d+)\.(\d+|end)$/);
+    if (!match) return null;
+
+    const lineIndex = parseInt(match[1], 10) - 1;
+    const charIndex = match[2];
+
+    if (lineIndex >= lines.length) return null;
+
+    const line = lines[lineIndex];
+
+    let targetNode = null, offset = 0;
+
+    for (const segment of line) {
+        if (segment.node.nodeType === Node.TEXT_NODE) {
+            const textLen = segment.text.length;
+            if (charIndex === "end" || offset + textLen >= parseInt(charIndex)) {
+                const pos = (charIndex === "end") ? textLen : parseInt(charIndex) - offset;
+                return { container: segment.node, offset: segment.startOffset + Math.min(pos, textLen) };
+            }
+            offset += textLen;
+        }
+    }
+
+    return null;
+}
+
+function insertText(indexStr, text) {
+    const pos = getDOMPositionFromIndex(indexStr);
+    if (!pos) {
+        setStatus("⚠️ Invalid index: " + indexStr);
+        return;
+    }
+
+    const range = document.createRange();
+    range.setStart(pos.container, pos.offset);
+    range.collapse(true);
+
+    const textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+
+    // Move selection after inserted text
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    range.setStartAfter(textNode);
+    range.collapse(true);
+    sel.addRange(range);
+
+    setStatus(`✅ Inserted text at ${indexStr}`);
+}
+
+function addCursorAtIndex(indexStr) {
+    const pos = getDOMPositionFromIndex(indexStr);
+    if (!pos) {
+        setStatus(`⚠️ Invalid index: ${indexStr}`);
+        return;
+    }
+
+    const range = document.createRange();
+    range.setStart(pos.container, pos.offset);
+    range.collapse(true);
+
+    // Add to the global cursors array
+    cursors.push({ range, span: null });
+
+    updateCursorVisualPositions();
+    setStatus(`✅ Cursor added at ${indexStr}`);
+}
+
+function selectRangeByIndex(fromIndex, toIndex) {
+    const fromPos = getDOMPositionFromIndex(fromIndex);
+    const toPos = getDOMPositionFromIndex(toIndex);
+
+    if (!fromPos || !toPos) {
+        setStatus("⚠️ Invalid index(es): " + fromIndex + ", " + toIndex);
+        return;
+    }
+
+    const range = document.createRange();
+    range.setStart(fromPos.container, fromPos.offset);
+    range.setEnd(toPos.container, toPos.offset);
+
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    setStatus(`✅ Selected range from ${fromIndex} to ${toIndex}`);
+}
+// Index based api ends here
+
+function promptForFields(fieldNames, callback) {
+    // Remove any existing modal
+    const oldModal = document.getElementById("input-popup-modal");
+    if (oldModal) oldModal.remove();
+
+    // Modal overlay
+    const overlay = document.createElement("div");
+    overlay.id = "input-popup-modal";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100vw";
+    overlay.style.height = "100vh";
+    overlay.style.background = "rgba(0,0,0,0.3)";
+    overlay.style.display = "flex";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.zIndex = 10000;
+
+    // Modal box
+    const modal = document.createElement("div");
+    modal.style.background = "white";
+    modal.style.padding = "2em";
+    modal.style.borderRadius = "10px";
+    modal.style.boxShadow = "0 4px 20px #0005";
+    modal.style.minWidth = "260px";
+
+    const form = document.createElement("form");
+    form.onsubmit = e => {
+        e.preventDefault();
+        const result = {};
+        fieldNames.forEach(name => {
+            result[name] = form.elements[name].value;
+        });
+        document.body.removeChild(overlay);
+        callback(result);
+    };
+
+    // Add input fields
+    fieldNames.forEach(name => {
+        const label = document.createElement("label");
+        label.textContent = name + ":";
+        label.style.display = "block";
+        label.style.margin = "10px 0 3px 0";
+        label.htmlFor = `input-popup-${name}`;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.name = name;
+        input.id = `input-popup-${name}`;
+        input.style.width = "95%";
+        input.style.marginBottom = "8px";
+
+        form.appendChild(label);
+        form.appendChild(input);
+    });
+
+    // OK & Cancel buttons
+    const btnRow = document.createElement("div");
+    btnRow.style.marginTop = "12px";
+    btnRow.style.textAlign = "right";
+
+    const okBtn = document.createElement("button");
+    okBtn.type = "submit";
+    okBtn.textContent = "OK";
+    okBtn.style.marginRight = "8px";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.onclick = () => document.body.removeChild(overlay);
+
+    btnRow.appendChild(okBtn);
+    btnRow.appendChild(cancelBtn);
+
+    form.appendChild(btnRow);
+    modal.appendChild(form);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Focus first input
+    setTimeout(() => {
+        const firstInput = form.querySelector("input");
+        if (firstInput) firstInput.focus();
+    }, 10);
 }
 
 </script>
@@ -5130,6 +5466,9 @@ function insertGeneratedTextAtCursors(generatorFn) {
   Ctrl+Alt+v/V   Paste accross lines at starts(v)/ends(V)
   Ctrl+Alt+d     Delete lines with cursors
   Ctrl+Alt+k     Keep only lines with cursors
+  Ctrl+Alt+D     Delete lines with highlighting
+  Ctrl+Alt+K     Keep only lines with highlighting
+  Ctrl+Alt+q     Add attachment
   Ctrl+Alt+s     Save editor content locally
   Tab            Indent selection
   Shift+Tab      Unindent selection
@@ -5197,4 +5536,5 @@ Text Commands (Can be used with Javascript Eval):
 
 </body>
 </html>
+
 
